@@ -10,8 +10,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { templates } from "@/data/mockData";
 import { Template, TemplateElement } from "@/types";
-import { ArrowLeft, Save, Eye, Code, Image, Type, Square, MousePointer } from "lucide-react";
+import { ArrowLeft, Save, Eye, Code, Image, Type, Square, MousePointer, Plus, Trash2 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import TemplateElementEditor from "@/components/templates/TemplateElementEditor";
 
 const TemplateEditor = () => {
   const { id } = useParams();
@@ -101,6 +103,31 @@ const TemplateEditor = () => {
     });
   };
   
+  // Handle updating elements
+  const handleUpdateElement = (id: string, updatedElement: TemplateElement) => {
+    setTemplate(prev => ({
+      ...prev,
+      elements: prev.elements.map(el => 
+        el.id === id ? { ...updatedElement } : el
+      ),
+      updatedAt: new Date().toISOString()
+    }));
+  };
+  
+  // Handle deleting elements
+  const handleDeleteElement = (id: string) => {
+    setTemplate(prev => ({
+      ...prev,
+      elements: prev.elements.filter(el => el.id !== id),
+      updatedAt: new Date().toISOString()
+    }));
+    
+    toast({
+      title: "Element Deleted",
+      description: "The element has been removed from your template."
+    });
+  };
+  
   // Handle element drag start
   const handleDragStart = (type: string) => {
     setDraggingElement(type);
@@ -138,6 +165,63 @@ const TemplateEditor = () => {
   </div>
 </body>
 </html>`;
+  
+  // Render element design panel with resizable components
+  const renderElementDesignPanel = () => (
+    <div className="border rounded-lg p-4 min-h-[500px] relative" style={{ background: '#f9f9f9' }}>
+      {template.elements.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-96 text-center text-muted-foreground">
+          <div className="mb-4 bg-accent rounded-full p-3">
+            <MousePointer className="h-8 w-8" />
+          </div>
+          <h3 className="text-lg font-medium mb-2">Start Building Your Template</h3>
+          <p className="max-w-md mb-4">
+            Drag and drop elements from the sidebar or click on them to add to your email template.
+          </p>
+          <div className="flex gap-2">
+            <Button onClick={() => handleAddElement("text")}>Add Text</Button>
+            <Button variant="outline" onClick={() => handleAddElement("image")}>Add Image</Button>
+          </div>
+        </div>
+      ) : (
+        <ResizablePanelGroup direction="vertical" className="space-y-4">
+          {template.elements.map((element, index) => (
+            <TemplateElementEditor 
+              key={element.id}
+              element={element}
+              onUpdate={(updatedElement) => handleUpdateElement(element.id, updatedElement)}
+              onDelete={() => handleDeleteElement(element.id)}
+            />
+          ))}
+          <div className="flex justify-center py-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAddElement("text")}
+              className="mr-2"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Add Text
+            </Button>
+            <Button
+              variant="outline" 
+              size="sm"
+              onClick={() => handleAddElement("image")}
+              className="mr-2"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Add Image
+            </Button>
+            <Button
+              variant="outline"
+              size="sm" 
+              onClick={() => handleAddElement("button")}
+            >
+              <Plus className="w-4 h-4 mr-1" /> Add Button
+            </Button>
+          </div>
+        </ResizablePanelGroup>
+      )}
+    </div>
+  );
   
   return (
     <div className="space-y-6">
@@ -287,113 +371,7 @@ const TemplateEditor = () => {
                       />
                     </div>
                     
-                    <div className="border rounded-lg p-4 min-h-[500px]" style={{ background: '#f9f9f9' }}>
-                      {template.elements.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-96 text-center text-muted-foreground">
-                          <div className="mb-4 bg-accent rounded-full p-3">
-                            <MousePointer className="h-8 w-8" />
-                          </div>
-                          <h3 className="text-lg font-medium mb-2">Start Building Your Template</h3>
-                          <p className="max-w-md mb-4">
-                            Drag and drop elements from the sidebar or click on them to add to your email template.
-                          </p>
-                          <div className="flex gap-2">
-                            <Button onClick={() => handleAddElement("text")}>Add Text</Button>
-                            <Button variant="outline" onClick={() => handleAddElement("image")}>Add Image</Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {template.elements.map((element) => (
-                            <div 
-                              key={element.id} 
-                              className="border border-dashed p-3 rounded-lg hover:border-primary cursor-pointer transition-all"
-                            >
-                              {element.type === "text" && (
-                                <Textarea 
-                                  value={element.content}
-                                  onChange={(e) => {
-                                    setTemplate({
-                                      ...template,
-                                      elements: template.elements.map(el => 
-                                        el.id === element.id ? { ...el, content: e.target.value } : el
-                                      )
-                                    });
-                                  }}
-                                  placeholder="Enter text here..."
-                                  className="min-h-[100px]"
-                                />
-                              )}
-                              
-                              {element.type === "image" && (
-                                <div className="flex flex-col items-center gap-2">
-                                  <img 
-                                    src={element.src} 
-                                    alt="Template" 
-                                    className="max-w-full h-auto border rounded"
-                                  />
-                                  <Input 
-                                    value={element.src}
-                                    onChange={(e) => {
-                                      setTemplate({
-                                        ...template,
-                                        elements: template.elements.map(el => 
-                                          el.id === element.id ? { ...el, src: e.target.value } : el
-                                        )
-                                      });
-                                    }}
-                                    placeholder="Image URL"
-                                    className="max-w-sm"
-                                  />
-                                </div>
-                              )}
-                              
-                              {element.type === "button" && (
-                                <div className="flex flex-col items-center gap-2">
-                                  <Button className="w-auto">
-                                    {element.content}
-                                  </Button>
-                                  <div className="flex gap-2 w-full max-w-sm">
-                                    <Input 
-                                      value={element.content}
-                                      onChange={(e) => {
-                                        setTemplate({
-                                          ...template,
-                                          elements: template.elements.map(el => 
-                                            el.id === element.id ? { ...el, content: e.target.value } : el
-                                          )
-                                        });
-                                      }}
-                                      placeholder="Button Text"
-                                    />
-                                    <Input 
-                                      value={element.link}
-                                      onChange={(e) => {
-                                        setTemplate({
-                                          ...template,
-                                          elements: template.elements.map(el => 
-                                            el.id === element.id ? { ...el, link: e.target.value } : el
-                                          )
-                                        });
-                                      }}
-                                      placeholder="Link URL"
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {element.type === "divider" && (
-                                <Separator className="my-4" />
-                              )}
-                              
-                              {element.type === "spacer" && (
-                                <div className="h-8" />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    {renderElementDesignPanel()}
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -433,6 +411,11 @@ const TemplateEditor = () => {
                       src={element.src} 
                       alt="Template" 
                       className="max-w-full h-auto"
+                      style={{
+                        width: element.width ? `${element.width}px` : '100%',
+                        maxWidth: '100%',
+                        height: element.height ? `${element.height}px` : 'auto',
+                      }}
                     />
                   )}
                   

@@ -1,9 +1,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, User } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useToast } from "@/components/ui/use-toast";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const Header = () => {
   const { toast } = useToast();
@@ -49,6 +50,10 @@ const Header = () => {
           <Bell className="h-5 w-5" />
           <span className="sr-only">Notifications</span>
         </Button>
+
+        <Avatar className="h-9 w-9 cursor-pointer">
+          <AvatarFallback className="bg-primary/10 text-primary text-sm">JD</AvatarFallback>
+        </Avatar>
       </div>
     </header>
   );
