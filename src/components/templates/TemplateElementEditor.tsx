@@ -27,24 +27,21 @@ const TemplateElementEditor: React.FC<TemplateElementEditorProps> = ({
   const updateElementContent = (content: string) => {
     onUpdate({
       ...element,
-      content,
-      updatedAt: new Date().toISOString()
+      content
     });
   };
 
   const updateElementImage = (src: string) => {
     onUpdate({
       ...element,
-      src,
-      updatedAt: new Date().toISOString()
+      src
     });
   };
 
   const updateElementLink = (link: string) => {
     onUpdate({
       ...element,
-      link,
-      updatedAt: new Date().toISOString()
+      link
     });
   };
   
@@ -52,8 +49,7 @@ const TemplateElementEditor: React.FC<TemplateElementEditorProps> = ({
     onUpdate({
       ...element,
       width: width !== undefined ? width : element.width,
-      height: height !== undefined ? height : element.height,
-      updatedAt: new Date().toISOString()
+      height: height !== undefined ? height : element.height
     });
   };
 

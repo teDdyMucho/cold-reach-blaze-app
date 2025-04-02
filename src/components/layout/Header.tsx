@@ -1,13 +1,43 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bell, Search, User } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useToast } from "@/components/ui/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 const Header = () => {
   const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [showNewEditor, setShowNewEditor] = useState(false);
+  
+  useEffect(() => {
+    const isTemplateEditor = location.pathname.includes("/templates/editor");
+    setShowNewEditor(isTemplateEditor);
+  }, [location]);
+  
+  const handleToggleEditor = () => {
+    if (showNewEditor) {
+      toast({
+        title: "Using Original Editor",
+        description: "Switched back to the original template editor",
+      });
+      setShowNewEditor(false);
+    } else {
+      const currentPath = location.pathname;
+      
+      if (currentPath.includes("/templates/editor")) {
+        navigate(currentPath);
+        toast({
+          title: "Using Enhanced Editor",
+          description: "Now using the enhanced template editor with animation support",
+        });
+        setShowNewEditor(true);
+      }
+    }
+  };
   
   return (
     <header className="border-b p-4 flex items-center justify-between">
@@ -24,6 +54,17 @@ const Header = () => {
       </div>
       
       <div className="flex items-center gap-4">
+        {location.pathname.includes("/templates/editor") && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="bg-gradient-to-r from-brand-purple to-brand-blue text-white hover:opacity-90 border-0"
+            onClick={handleToggleEditor}
+          >
+            {showNewEditor ? "Original Editor" : "Enhanced Editor"}
+          </Button>
+        )}
+        
         <Button 
           variant="outline" 
           size="sm"
