@@ -20,6 +20,15 @@ const TemplateEditor = () => {
   const [activeTab, setActiveTab] = useState("design");
   const [previewMode, setPreviewMode] = useState(false);
   
+  // Sample data for placeholders in preview mode
+  const previewData = {
+    firstName: "John",
+    lastName: "Doe",
+    company: "Acme Inc.",
+    position: "Marketing Manager",
+    email: "john.doe@example.com"
+  };
+  
   const emptyTemplate: Template = {
     id: uuidv4(),
     name: "Untitled Template",
@@ -48,6 +57,15 @@ const TemplateEditor = () => {
       (card as HTMLElement).style.setProperty('--delay', index.toString());
     });
   }, [id]);
+  
+  // Parse placeholders in content
+  const parsePlaceholders = (content: string | undefined): string => {
+    if (!content) return '';
+    
+    return content.replace(/\{\{(\w+)\}\}/g, (match, placeholder) => {
+      return previewData[placeholder as keyof typeof previewData] || match;
+    });
+  };
   
   // Handle saving the template
   const handleSaveTemplate = () => {
@@ -404,7 +422,7 @@ const TemplateEditor = () => {
               {template.elements.map((element) => (
                 <div key={element.id}>
                   {element.type === "text" && (
-                    <div dangerouslySetInnerHTML={{ __html: element.content?.replace(/\n/g, '<br>') || '' }} />
+                    <div dangerouslySetInnerHTML={{ __html: parsePlaceholders(element.content?.replace(/\n/g, '<br>') || '') }} />
                   )}
                   
                   {element.type === "image" && (
@@ -422,7 +440,7 @@ const TemplateEditor = () => {
                       rel="noopener noreferrer"
                       className="inline-block py-2 px-4 bg-primary text-primary-foreground rounded text-center"
                     >
-                      {element.content}
+                      {parsePlaceholders(element.content)}
                     </a>
                   )}
                   
