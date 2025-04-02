@@ -111,6 +111,34 @@ const TemplateEditor = () => {
     setDraggingElement(null);
   };
   
+  // Default HTML template with sanitized placeholders
+  const defaultHtmlTemplate = `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .content { margin-bottom: 30px; }
+    .footer { text-align: center; font-size: 12px; color: #666; }
+    .button { display: inline-block; padding: 10px 20px; background-color: #4A7BF7; color: white; text-decoration: none; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Hello {{firstName}}!</h2>
+    </div>
+    <div class="content">
+      <p>Edit your HTML content here...</p>
+    </div>
+    <div class="footer">
+      <p>Your Company | Address | <a href="mailto:info@company.com">info@company.com</a></p>
+    </div>
+  </div>
+</body>
+</html>`;
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -229,7 +257,7 @@ const TemplateEditor = () => {
                     <Card className="instruction-card animate-instruction bg-accent/50">
                       <CardContent className="p-3 text-xs">
                         <p className="font-medium mb-1">Personalization</p>
-                        <p>Use {{firstName}}, {{company}}, etc. for dynamic content.</p>
+                        <p>Use {`{{firstName}}`}, {`{{company}}`}, etc. for dynamic content.</p>
                       </CardContent>
                     </Card>
                     
@@ -370,32 +398,7 @@ const TemplateEditor = () => {
                 ) : (
                   <div className="space-y-4">
                     <Textarea 
-                      value={template.html || `<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { text-align: center; margin-bottom: 20px; }
-    .content { margin-bottom: 30px; }
-    .footer { text-align: center; font-size: 12px; color: #666; }
-    .button { display: inline-block; padding: 10px 20px; background-color: #4A7BF7; color: white; text-decoration: none; border-radius: 4px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h2>Hello {{firstName}}!</h2>
-    </div>
-    <div class="content">
-      <p>Edit your HTML content here...</p>
-    </div>
-    <div class="footer">
-      <p>Your Company | Address | <a href="mailto:info@company.com">info@company.com</a></p>
-    </div>
-  </div>
-</body>
-</html>`} 
+                      value={template.html || defaultHtmlTemplate} 
                       onChange={(e) => setTemplate({...template, html: e.target.value})}
                       className="min-h-[500px] font-mono text-sm"
                     />
