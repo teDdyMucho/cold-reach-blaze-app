@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -63,6 +64,8 @@ const AnimationEditor: React.FC<{
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [tool, setTool] = useState<"select" | "text" | "image">("select");
+  // Add cache for loaded images to improve performance
+  const [imageCache, setImageCache] = useState<Record<string, HTMLImageElement>>({});
 
   useEffect(() => {
     if (canvasRef.current) {
@@ -73,33 +76,48 @@ const AnimationEditor: React.FC<{
     }
   }, []);
 
+  // Animation frame handler with improved timing
   useEffect(() => {
+    if (!ctx || !canvasRef.current) return;
+
     let animationFrameId: number;
     let frameIndex = currentFrame;
     let lastFrameTime = 0;
     const frameDuration = 1000 / fps;
 
-    const renderFrame = (timestamp: number) => {
-      if (isPlaying && ctx && canvasRef.current) {
-        if (timestamp - lastFrameTime >= frameDuration) {
-          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-          drawFrame(frames[frameIndex]);
-          frameIndex = (frameIndex + 1) % frames.length;
-          setCurrentFrame(frameIndex);
-          lastFrameTime = timestamp;
+    const renderAnimation = (timestamp: number) => {
+      if (!isPlaying) return;
+      
+      if (!lastFrameTime || timestamp - lastFrameTime >= frameDuration) {
+        ctx.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+        
+        // Draw the current frame with animations
+        const frame = frames[frameIndex];
+        drawFrameWithAnimations(frame, timestamp);
+        
+        frameIndex = (frameIndex + 1) % frames.length;
+        if (frameIndex === 0 && frames.length > 1) {
+          // Loop completed
+          console.log("Animation loop completed");
         }
         
-        animationFrameId = requestAnimationFrame(renderFrame);
+        setCurrentFrame(frameIndex);
+        lastFrameTime = timestamp;
       }
+      
+      animationFrameId = requestAnimationFrame(renderAnimation);
+    };
+
+    const drawStatic = () => {
+      ctx.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+      drawFrame(frames[currentFrame]);
     };
 
     if (isPlaying) {
-      animationFrameId = requestAnimationFrame(renderFrame);
+      lastFrameTime = 0;
+      animationFrameId = requestAnimationFrame(renderAnimation);
     } else {
-      if (ctx && canvasRef.current) {
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        drawFrame(frames[currentFrame]);
-      }
+      drawStatic();
     }
 
     return () => {
@@ -108,6 +126,107 @@ const AnimationEditor: React.FC<{
       }
     };
   }, [isPlaying, currentFrame, frames, fps, ctx]);
+
+  // When frames or currentFrame changes, redraw static content
+  useEffect(() => {
+    if (!isPlaying && ctx && canvasRef.current) {
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      drawFrame(frames[currentFrame]);
+    }
+  }, [frames, currentFrame, ctx, isPlaying]);
+
+  const drawFrameWithAnimations = (frame: AnimationFrame, timestamp: number) => {
+    if (!ctx || !canvasRef.current) return;
+
+    frame.elements.forEach((element) => {
+      // Apply animations
+      let x = element.x;
+      let y = element.y;
+      let opacity = 1;
+      let scale = 1;
+      let rotation = element.rotation;
+
+      if (element.animation) {
+        const { type, duration, delay } = element.animation;
+        const animationTime = Math.max(0, timestamp - delay);
+        const progress = Math.min(1, animationTime / duration);
+        
+        switch (type) {
+          case "fade":
+            opacity = progress;
+            break;
+          case "slide":
+            x = element.x - (canvasRef.current.width * (1 - progress));
+            break;
+          case "bounce":
+            const bounce = Math.sin(progress * Math.PI * 2) * 20 * (1 - progress);
+            y = element.y - bounce;
+            break;
+          case "rotate":
+            rotation = element.rotation + (360 * progress);
+            break;
+          case "scale":
+            scale = progress;
+            break;
+        }
+      }
+
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      
+      if (element.type === "text" && element.content) {
+        ctx.translate(x + element.width / 2, y + element.height / 2);
+        ctx.rotate((rotation * Math.PI) / 180);
+        ctx.scale(scale, scale);
+        ctx.font = "20px Arial";
+        ctx.fillStyle = "#000";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(element.content, 0, 0);
+      } else if (element.type === "image" && element.src) {
+        let img: HTMLImageElement;
+        
+        // Use cached image or create a new one
+        if (imageCache[element.src]) {
+          img = imageCache[element.src];
+          drawImageWithTransforms(ctx, img, x, y, element.width, element.height, rotation, scale);
+        } else {
+          img = new Image();
+          img.src = element.src;
+          
+          if (img.complete) {
+            drawImageWithTransforms(ctx, img, x, y, element.width, element.height, rotation, scale);
+            // Cache the image for future use
+            setImageCache(prev => ({ ...prev, [element.src!]: img }));
+          } else {
+            img.onload = () => {
+              drawImageWithTransforms(ctx, img, x, y, element.width, element.height, rotation, scale);
+              // Cache the image for future use
+              setImageCache(prev => ({ ...prev, [element.src!]: img }));
+            };
+          }
+        }
+      }
+      
+      ctx.restore();
+    });
+  };
+
+  const drawImageWithTransforms = (
+    ctx: CanvasRenderingContext2D, 
+    img: HTMLImageElement, 
+    x: number, 
+    y: number, 
+    width: number, 
+    height: number, 
+    rotation: number, 
+    scale: number
+  ) => {
+    ctx.translate(x + width / 2, y + height / 2);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, -width / 2, -height / 2, width, height);
+  };
 
   const drawFrame = (frame: AnimationFrame) => {
     if (!ctx || !canvasRef.current) return;
@@ -121,16 +240,60 @@ const AnimationEditor: React.FC<{
         ctx.fillStyle = "#000";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(element.content, -element.width / 2, -element.height / 2);
+        ctx.fillText(element.content, 0, 0);
         ctx.restore();
       } else if (element.type === "image" && element.src) {
-        const img = new Image();
-        img.src = element.src;
+        let img: HTMLImageElement;
         
-        if (img.complete) {
-          drawImage(ctx, img, element);
+        // Use cached image or create a new one
+        if (imageCache[element.src]) {
+          img = imageCache[element.src];
+          ctx.save();
+          ctx.translate(element.x + element.width / 2, element.y + element.height / 2);
+          ctx.rotate((element.rotation * Math.PI) / 180);
+          ctx.drawImage(img, -element.width / 2, -element.height / 2, element.width, element.height);
+          ctx.restore();
         } else {
-          img.onload = () => drawImage(ctx, img, element);
+          img = new Image();
+          img.src = element.src;
+          
+          img.onload = () => {
+            // Store in cache
+            setImageCache(prev => ({ ...prev, [element.src!]: img }));
+            
+            // Automatically resize the element to match image aspect ratio
+            if (element.width === 200 && element.height === 200) {
+              // Only auto-resize if it's still at the default size
+              const aspectRatio = img.width / img.height;
+              const newWidth = 200;
+              const newHeight = newWidth / aspectRatio;
+              
+              // Update the element dimensions
+              const updatedFrames = [...frames];
+              const elementIndex = updatedFrames[currentFrame].elements.findIndex(
+                (el) => el.id === element.id
+              );
+              
+              if (elementIndex !== -1) {
+                updatedFrames[currentFrame].elements[elementIndex] = {
+                  ...updatedFrames[currentFrame].elements[elementIndex],
+                  width: newWidth,
+                  height: newHeight
+                };
+                
+                // Debounce the state update
+                setTimeout(() => {
+                  setFrames(updatedFrames);
+                }, 10);
+              }
+            }
+            
+            ctx.save();
+            ctx.translate(element.x + element.width / 2, element.y + element.height / 2);
+            ctx.rotate((element.rotation * Math.PI) / 180);
+            ctx.drawImage(img, -element.width / 2, -element.height / 2, element.width, element.height);
+            ctx.restore();
+          };
         }
       }
     });
@@ -291,12 +454,21 @@ const AnimationEditor: React.FC<{
   const generateGif = () => {
     setIsRecording(true);
     
+    // Force play the animation to see what will be captured
+    setIsPlaying(true);
+    
     toast({
       title: "Generating GIF",
       description: "Please wait while your animation is being converted to a GIF...",
     });
     
+    // In a real implementation, we would capture frames and create an actual GIF
+    // For this example, we'll simulate the process with a timeout
     setTimeout(() => {
+      // Stop playing after recording
+      setIsPlaying(false);
+      
+      // Generate a simple animated GIF
       const simulatedGifUrl = "data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
       
       onSave(simulatedGifUrl);
@@ -586,7 +758,17 @@ const AnimationEditor: React.FC<{
                           <label className="text-xs font-medium block mb-1">Image URL</label>
                           <Input
                             value={selectedElementData.src || ""}
-                            onChange={(e) => updateSelectedElement({ src: e.target.value })}
+                            onChange={(e) => {
+                              // When image URL changes, remove from cache to force reload
+                              if (selectedElementData.src && imageCache[selectedElementData.src]) {
+                                setImageCache(prev => {
+                                  const newCache = {...prev};
+                                  delete newCache[selectedElementData.src!];
+                                  return newCache;
+                                });
+                              }
+                              updateSelectedElement({ src: e.target.value });
+                            }}
                           />
                         </div>
                       </div>
