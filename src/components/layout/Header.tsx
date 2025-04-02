@@ -1,7 +1,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bell, Search, SidebarTrigger } from "lucide-react";
+import { Bell, Search } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useToast } from "@/components/ui/use-toast";
 
 const Header = () => {
