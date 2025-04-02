@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import AppLayout from "@/components/layout/AppLayout";
 import Index from "@/pages/Index";
 import Dashboard from "@/pages/Dashboard";
@@ -31,21 +32,23 @@ function ScrollToTop() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ScrollToTop />
-      <Routes>
-        <Route path="/" element={<AppLayout />}>
-          <Route index element={<Index />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="templates" element={<Templates />} />
-          <Route path="templates/editor" element={<TemplateEditorNew />} />
-          <Route path="templates/editor/:id" element={<TemplateEditorNew />} />
-          <Route path="campaigns" element={<Campaigns />} />
-          <Route path="contacts" element={<Contacts />} />
-          <Route path="integrations" element={<Integrations />} />
-          <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
-      <Toaster />
+      <SidebarProvider>
+        <ScrollToTop />
+        <Routes>
+          <Route path="/" element={<AppLayout />}>
+            <Route index element={<Index />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="templates" element={<Templates />} />
+            <Route path="templates/editor" element={<TemplateEditorNew />} />
+            <Route path="templates/editor/:id" element={<TemplateEditorNew />} />
+            <Route path="campaigns" element={<Campaigns />} />
+            <Route path="contacts" element={<Contacts />} />
+            <Route path="integrations" element={<Integrations />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Routes>
+        <Toaster />
+      </SidebarProvider>
     </QueryClientProvider>
   );
 }
