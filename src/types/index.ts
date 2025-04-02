@@ -1,4 +1,3 @@
-
 export interface Template {
   id: string;
   name: string;
@@ -12,7 +11,7 @@ export interface Template {
 
 export interface TemplateElement {
   id: string;
-  type: 'text' | 'image' | 'button' | 'divider' | 'spacer';
+  type: 'text' | 'image' | 'button' | 'divider' | 'spacer' | 'animation';
   content?: string;
   src?: string;
   width?: number;
@@ -20,6 +19,13 @@ export interface TemplateElement {
   style?: Record<string, any>;
   position?: { x: number; y: number };
   link?: string;
+  animation?: {
+    preset: string;
+    duration: number;
+    delay: number;
+    repeat: number;
+    easing: string;
+  };
 }
 
 export interface Campaign {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -56,6 +55,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import TemplateElementEditor from "@/components/templates/TemplateElementEditor";
 import AnimationEditor from "@/components/canvas/AnimationEditor";
+import SimpleAnimationEditor from "@/components/canvas/SimpleAnimationEditor";
 
 const TemplateEditorNew = () => {
   const { id } = useParams();
@@ -65,6 +65,7 @@ const TemplateEditorNew = () => {
   const [activeTab, setActiveTab] = useState("design");
   const [previewMode, setPreviewMode] = useState(false);
   const [showAnimationEditor, setShowAnimationEditor] = useState(false);
+  const [useSimpleAnimator, setUseSimpleAnimator] = useState(true);
   const [layoutType, setLayoutType] = useState<"desktop" | "mobile">("desktop");
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [historySteps, setHistorySteps] = useState<Template[]>([]);
@@ -757,10 +758,39 @@ const TemplateEditorNew = () => {
       {/* Animation Editor Dialog */}
       <Dialog open={showAnimationEditor} onOpenChange={setShowAnimationEditor}>
         <DialogContent className="max-w-7xl h-[90vh]">
-          <AnimationEditor 
-            onSave={handleSaveAnimatedGif}
-            onCancel={() => setShowAnimationEditor(false)}
-          />
+          <DialogHeader>
+            <DialogTitle>Animation Editor</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-end mb-4">
+            <div className="flex items-center gap-2 bg-muted p-1 rounded-md">
+              <Button 
+                variant={useSimpleAnimator ? "default" : "ghost"} 
+                size="sm"
+                onClick={() => setUseSimpleAnimator(true)}
+              >
+                Simple Editor
+              </Button>
+              <Button 
+                variant={!useSimpleAnimator ? "default" : "ghost"} 
+                size="sm"
+                onClick={() => setUseSimpleAnimator(false)}
+              >
+                Advanced Editor
+              </Button>
+            </div>
+          </div>
+          
+          {useSimpleAnimator ? (
+            <SimpleAnimationEditor 
+              onSave={handleSaveAnimatedGif}
+              onCancel={() => setShowAnimationEditor(false)}
+            />
+          ) : (
+            <AnimationEditor 
+              onSave={handleSaveAnimatedGif}
+              onCancel={() => setShowAnimationEditor(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
       
