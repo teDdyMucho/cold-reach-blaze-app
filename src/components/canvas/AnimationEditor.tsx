@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,7 +34,7 @@ interface Animation {
 }
 
 const TEXT_ANIMATIONS = [
-  { label: "None", value: "" },
+  { label: "None", value: "none" },
   { label: "Fade In", value: "fade" },
   { label: "Slide In", value: "slide" },
   { label: "Bounce", value: "bounce" },
@@ -65,7 +64,6 @@ const AnimationEditor: React.FC<{
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [tool, setTool] = useState<"select" | "text" | "image">("select");
 
-  // Initialize canvas context
   useEffect(() => {
     if (canvasRef.current) {
       const context = canvasRef.current.getContext("2d");
@@ -75,7 +73,6 @@ const AnimationEditor: React.FC<{
     }
   }, []);
 
-  // Animation loop
   useEffect(() => {
     let animationFrameId: number;
     let frameIndex = currentFrame;
@@ -85,13 +82,8 @@ const AnimationEditor: React.FC<{
     const renderFrame = (timestamp: number) => {
       if (isPlaying && ctx && canvasRef.current) {
         if (timestamp - lastFrameTime >= frameDuration) {
-          // Clear canvas
           ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-          
-          // Draw current frame
           drawFrame(frames[frameIndex]);
-          
-          // Move to next frame
           frameIndex = (frameIndex + 1) % frames.length;
           setCurrentFrame(frameIndex);
           lastFrameTime = timestamp;
@@ -104,7 +96,6 @@ const AnimationEditor: React.FC<{
     if (isPlaying) {
       animationFrameId = requestAnimationFrame(renderFrame);
     } else {
-      // If not playing, just draw the current frame
       if (ctx && canvasRef.current) {
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
         drawFrame(frames[currentFrame]);
@@ -118,7 +109,6 @@ const AnimationEditor: React.FC<{
     };
   }, [isPlaying, currentFrame, frames, fps, ctx]);
 
-  // Draw the specified frame on the canvas
   const drawFrame = (frame: AnimationFrame) => {
     if (!ctx || !canvasRef.current) return;
 
@@ -154,11 +144,10 @@ const AnimationEditor: React.FC<{
     ctx.restore();
   };
 
-  // Add a new frame
   const addFrame = () => {
     const newFrame: AnimationFrame = {
       id: `frame-${frames.length + 1}`,
-      elements: [...frames[currentFrame].elements], // Copy elements from current frame
+      elements: [...frames[currentFrame].elements],
     };
     
     setFrames([...frames, newFrame]);
@@ -170,7 +159,6 @@ const AnimationEditor: React.FC<{
     });
   };
 
-  // Delete the current frame
   const deleteFrame = () => {
     if (frames.length <= 1) {
       toast({
@@ -190,7 +178,6 @@ const AnimationEditor: React.FC<{
     });
   };
 
-  // Add a new element to the current frame
   const addElement = (type: "text" | "image") => {
     const newElement: AnimationElement = {
       id: `element-${Date.now()}`,
@@ -219,7 +206,6 @@ const AnimationEditor: React.FC<{
     });
   };
 
-  // Delete the selected element
   const deleteElement = () => {
     if (!selectedElement) return;
     
@@ -240,7 +226,6 @@ const AnimationEditor: React.FC<{
     });
   };
 
-  // Update the selected element
   const updateSelectedElement = (properties: Partial<AnimationElement>) => {
     if (!selectedElement) return;
     
@@ -259,7 +244,6 @@ const AnimationEditor: React.FC<{
     }
   };
 
-  // Handle canvas mouse events for dragging elements
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (tool !== "select" || !canvasRef.current) return;
     
@@ -267,7 +251,6 @@ const AnimationEditor: React.FC<{
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Check if clicked on an element
     const elements = frames[currentFrame].elements;
     for (let i = elements.length - 1; i >= 0; i--) {
       const element = elements[i];
@@ -305,10 +288,7 @@ const AnimationEditor: React.FC<{
     setIsDragging(false);
   };
 
-  // Generate a GIF from the animations
   const generateGif = () => {
-    // In real implementation, we'd use a library like gif.js to create a GIF
-    // For now, we'll simulate it with a timeout
     setIsRecording(true);
     
     toast({
@@ -316,10 +296,7 @@ const AnimationEditor: React.FC<{
       description: "Please wait while your animation is being converted to a GIF...",
     });
     
-    // Simulate processing time
     setTimeout(() => {
-      // In a real implementation, we'd convert the canvas frames to a GIF
-      // and return the actual GIF URL
       const simulatedGifUrl = "data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
       
       onSave(simulatedGifUrl);
@@ -332,7 +309,6 @@ const AnimationEditor: React.FC<{
     }, 3000);
   };
 
-  // Get the currently selected element
   const getSelectedElement = () => {
     if (!selectedElement) return null;
     
@@ -362,7 +338,6 @@ const AnimationEditor: React.FC<{
       </div>
       
       <div className="grid grid-cols-12 gap-4 h-[calc(100vh-200px)]">
-        {/* Tools sidebar */}
         <div className="col-span-2 border rounded-lg p-3">
           <div className="mb-4">
             <h3 className="font-medium mb-2">Tools</h3>
@@ -410,15 +385,19 @@ const AnimationEditor: React.FC<{
               <h3 className="font-medium mb-2">Animation</h3>
               <div className="space-y-2">
                 <Select
-                  value={selectedElementData.animation?.type || ""}
+                  value={selectedElementData?.animation?.type || "none"}
                   onValueChange={(value) => {
-                    updateSelectedElement({
-                      animation: {
-                        type: value as "fade" | "slide" | "bounce" | "rotate" | "scale",
-                        duration: selectedElementData.animation?.duration || 1000,
-                        delay: selectedElementData.animation?.delay || 0,
-                      },
-                    });
+                    if (value === "none") {
+                      updateSelectedElement({ animation: undefined });
+                    } else {
+                      updateSelectedElement({
+                        animation: {
+                          type: value as "fade" | "slide" | "bounce" | "rotate" | "scale",
+                          duration: selectedElementData?.animation?.duration || 1000,
+                          delay: selectedElementData?.animation?.delay || 0,
+                        },
+                      });
+                    }
                   }}
                 >
                   <SelectTrigger className="w-full">
@@ -433,7 +412,7 @@ const AnimationEditor: React.FC<{
                   </SelectContent>
                 </Select>
                 
-                {selectedElementData.animation && (
+                {selectedElementData?.animation && (
                   <>
                     <div>
                       <span className="text-xs text-muted-foreground">Duration: {selectedElementData.animation.duration}ms</span>
@@ -477,7 +456,6 @@ const AnimationEditor: React.FC<{
           )}
         </div>
         
-        {/* Canvas area */}
         <div className="col-span-7 border rounded-lg p-4 flex flex-col">
           <div 
             className="bg-white flex-1 flex items-center justify-center overflow-hidden"
@@ -495,7 +473,6 @@ const AnimationEditor: React.FC<{
             />
           </div>
           
-          {/* Timeline */}
           <div className="mt-4 border-t pt-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -578,7 +555,6 @@ const AnimationEditor: React.FC<{
           </div>
         </div>
         
-        {/* Properties panel */}
         <div className="col-span-3 border rounded-lg p-3">
           <Tabs defaultValue="properties">
             <TabsList className="w-full mb-4">
