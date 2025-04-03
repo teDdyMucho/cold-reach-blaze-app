@@ -1,3 +1,5 @@
+import { ReactNode } from 'react';
+
 export interface Template {
   id: string;
   name: string;
@@ -5,6 +7,14 @@ export interface Template {
   content: string;
   html: string;
   elements: TemplateElement[];
+  components?: EmailComponent[];
+  styles?: {
+    backgroundColor?: string;
+    backgroundImage?: string;
+    backgroundSize?: string;
+    backgroundRepeat?: string;
+    backgroundPosition?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -26,6 +36,25 @@ export interface TemplateElement {
     repeat: number;
     easing: string;
   };
+}
+
+export interface EmailComponent {
+  id: string;
+  type: 'text' | 'image' | 'button' | 'divider' | 'spacer' | 'container' | 'columns' | 'text-image';
+  content?: string;
+  src?: string;
+  alt?: string;
+  url?: string;
+  styles?: Record<string, any>;
+  textStyles?: Record<string, any>;
+  imageStyles?: Record<string, any>;
+  columns?: {
+    id: string;
+    components: EmailComponent[];
+    styles: Record<string, any>;
+  }[];
+  imagePosition?: 'left' | 'right';
+  imageWidth?: string;
 }
 
 export interface Campaign {
