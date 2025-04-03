@@ -1,6 +1,5 @@
-
 import { useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Mail, Users, MousePointer, MessageSquare, Send, CheckCircle } from "lucide-react";
 import { performanceData, campaigns } from "@/data/mockData";
@@ -61,13 +60,13 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{card.value}</div>
-              <p className={`text-xs ${card.change && card.change > 0 ? 'text-green-500' : 'text-red-500'} flex items-center`}>
+              <div className={`text-xs ${card.change && card.change > 0 ? 'text-green-500' : 'text-red-500'} flex items-center`}>
                 {card.change && card.change > 0 ? 
                   <CheckCircle className="mr-1 h-3 w-3" /> : 
                   <span className="mr-1">↓</span>
                 }
                 {card.change}% from last week
-              </p>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -77,9 +76,6 @@ const Dashboard = () => {
       <Card className="animate-instruction" style={{"--delay": "4"} as React.CSSProperties}>
         <CardHeader>
           <CardTitle>Email Performance</CardTitle>
-          <CardDescription>
-            Weekly performance metrics across all campaigns
-          </CardDescription>
         </CardHeader>
         <CardContent className="h-[350px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -115,16 +111,16 @@ const Dashboard = () => {
               <div className="h-2 bg-gradient-to-r from-brand-purple to-brand-blue" />
               <CardHeader>
                 <CardTitle>{campaign.name}</CardTitle>
-                <CardDescription>
-                  <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${
+                <span className="text-sm text-muted-foreground">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${
                     campaign.status === 'sent' ? 'bg-green-100 text-green-800' : 
                     campaign.status === 'sending' ? 'bg-blue-100 text-blue-800' :
                     campaign.status === 'scheduled' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
                     {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
-                  </div>
-                </CardDescription>
+                  </span>
+                </span>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-2 text-sm">

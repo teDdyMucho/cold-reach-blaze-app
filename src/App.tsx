@@ -53,9 +53,8 @@ function AppContent() {
     <QueryClientProvider client={queryClient}>
       <SidebarProvider className="flex min-h-svh w-full" style={{ margin: 0, padding: 0 }}>
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
           <Route path="/index" element={<Index />} />
-          <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
           <Route path="/templates" element={<AppLayout><Templates /></AppLayout>} />
           <Route path="/template-editor/:id?" element={<ProtectedRoute><AppLayout><TemplateEditorNew /></AppLayout></ProtectedRoute>} />
           <Route path="/campaigns" element={<AppLayout><Campaigns /></AppLayout>} />

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,7 +86,7 @@ const Templates = () => {
           </Select>
         </div>
         
-        <Button onClick={() => navigate("/templates/editor")} className="animate-pulse-opacity bg-gradient-to-r from-brand-purple to-brand-blue hover:from-brand-purple hover:to-brand-blue">
+        <Button onClick={() => navigate("/template-editor")} className="animate-pulse-opacity bg-gradient-to-r from-brand-purple to-brand-blue hover:from-brand-purple hover:to-brand-blue">
           <Plus className="mr-2 h-4 w-4" />
           Create Template
         </Button>
@@ -111,7 +110,7 @@ const Templates = () => {
               </div>
             </CardContent>
             <CardFooter className="flex justify-between border-t pt-4">
-              <Button variant="outline" size="sm" onClick={() => navigate(`/templates/editor/${template.id}`)}>
+              <Button variant="outline" size="sm" onClick={() => navigate(`/template-editor/${template.id}`)}>
                 <Eye className="mr-1 h-4 w-4" />
                 Edit
               </Button>
@@ -140,7 +139,7 @@ const Templates = () => {
           <p className="text-muted-foreground mb-4">
             {searchTerm ? "No templates match your search criteria." : "You haven't created any templates yet."}
           </p>
-          <Button onClick={() => navigate("/templates/editor")}>
+          <Button onClick={() => navigate("/template-editor")}>
             <Plus className="mr-2 h-4 w-4" />
             Create Your First Template
           </Button>
