@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,12 +8,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { registerUser, loginUser } from "@/lib/firebaseService";
 import { useAuth } from "@/contexts/AuthContext";
-
+import { useToast } from "@/components/ui/use-toast";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
-  const { authState, setUser } = useAuth();
+  const { authState } = useAuth();
   const [activeTab, setActiveTab] = useState("login");
+  const { toast } = useToast();
   
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -30,6 +32,17 @@ const Landing: React.FC = () => {
   const [registerError, setRegisterError] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   
+  // Ensure proper scroll behavior on mount
+  useEffect(() => {
+    document.body.style.overflow = 'auto';
+    document.documentElement.style.overflow = 'auto';
+    
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, []);
+  
   // Handle login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,12 +58,22 @@ const Landing: React.FC = () => {
       const user = await loginUser(loginEmail, loginPassword);
       
       if (user) {
+        toast({
+          title: "Login successful",
+          description: "Welcome back!",
+          variant: "default"
+        });
         // Redirect to dashboard
         navigate("/dashboard");
       }
     } catch (error: any) {
       console.error("Login error:", error);
       setLoginError(error.message || "Failed to login. Please try again.");
+      toast({
+        title: "Login failed",
+        description: error.message || "Please check your credentials and try again",
+        variant: "destructive"
+      });
     } finally {
       setIsLoggingIn(false);
     }
@@ -82,12 +105,22 @@ const Landing: React.FC = () => {
       const user = await registerUser(registerEmail, registerPassword, registerName);
       
       if (user) {
+        toast({
+          title: "Registration successful",
+          description: "Welcome to Cold Reach Blaze!",
+          variant: "default"
+        });
         // Redirect to dashboard
         navigate("/dashboard");
       }
     } catch (error: any) {
       console.error("Registration error:", error);
       setRegisterError(error.message || "Failed to register. Please try again.");
+      toast({
+        title: "Registration failed",
+        description: error.message || "Please try with a different email address",
+        variant: "destructive"
+      });
     } finally {
       setIsRegistering(false);
     }
@@ -100,9 +133,9 @@ const Landing: React.FC = () => {
   }
   
   return (
-    <div className="w-full overflow-x-hidden">
+    <div className="min-h-screen w-full overflow-x-hidden overflow-y-auto">
       {/* Header */}
-      <header className="w-full py-6 px-4">
+      <header className="sticky top-0 z-50 w-full py-4 px-4 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center">
             <div className="bg-blue-600 text-white p-2 rounded-lg mr-2">
@@ -126,7 +159,7 @@ const Landing: React.FC = () => {
         </div>
       </header>
       
-      {/* Hero Section */}
+      {/* Hero Section with improved styling */}
       <section className="w-full relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50 py-20 md:py-32">
         <div className="max-w-6xl mx-auto px-4 relative z-10">
           <div className="flex flex-col md:flex-row items-center">
