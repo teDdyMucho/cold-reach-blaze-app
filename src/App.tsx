@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -32,15 +31,15 @@ function ScrollToTop() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
+      <SidebarProvider className="flex min-h-svh w-full" style={{ margin: 0, padding: 0 }}>
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<AppLayout />}>
             <Route index element={<Index />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="templates" element={<Templates />} />
-            <Route path="templates/editor" element={<TemplateEditorNew />} />
-            <Route path="templates/editor/:id" element={<TemplateEditorNew />} />
+            <Route path="templates/new" element={<TemplateEditorNew />} />
+            <Route path="templates/:id" element={<TemplateEditorNew />} />
             <Route path="campaigns" element={<Campaigns />} />
             <Route path="contacts" element={<Contacts />} />
             <Route path="integrations" element={<Integrations />} />

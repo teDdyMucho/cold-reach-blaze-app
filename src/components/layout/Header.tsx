@@ -7,7 +7,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
-const Header = () => {
+interface HeaderProps {
+  className?: string;
+}
+
+const Header = ({ className }: HeaderProps) => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -40,7 +44,7 @@ const Header = () => {
   };
   
   return (
-    <header className="border-b p-4 flex items-center justify-between">
+    <header className={[className, "border-b p-4 flex items-center justify-between"].join(" ")}>
       <div className="flex items-center gap-2">
         <SidebarTrigger className="h-5 w-5 text-muted-foreground mr-2" />
         <div className="relative max-w-md">

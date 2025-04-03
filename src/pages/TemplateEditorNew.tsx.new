@@ -36,11 +36,8 @@ import {
   Eye, 
   Code, 
   MousePointer, 
-  Settings,
-  PanelLeft
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
-import { cn } from "@/lib/utils";
 
 // Import new template editor components
 import ComponentSidebar from "@/components/templateEditor/ComponentSidebar";
@@ -49,17 +46,6 @@ import PropertiesSidebar from "@/components/templateEditor/PropertiesSidebar";
 import Header from "@/components/templateEditor/Header";
 import CodeView from "@/components/templateEditor/CodeView";
 import AIImageDialog from "@/components/templateEditor/AIImageDialog";
-
-interface EmailStyles {
-  backgroundColor: string;
-  backgroundImage: string;
-  backgroundSize: string;
-  backgroundRepeat: string;
-  backgroundPosition: string;
-  backgroundAttachment: string;
-  backgroundClip: string;
-  backgroundOrigin: string;
-}
 
 const TemplateEditorNew = () => {
   const { id } = useParams();
@@ -75,15 +61,15 @@ const TemplateEditorNew = () => {
   
   // New state for email components
   const [emailComponents, setEmailComponents] = useState<EmailComponent[]>([]);
-  const [emailStyles, setEmailStyles] = useState<EmailStyles>({
+  const [emailStyles, setEmailStyles] = useState({
     backgroundColor: "#FFFFFF",
     backgroundImage: "",
     backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
     backgroundPosition: "center center",
-    backgroundAttachment: "scroll",
-    backgroundClip: "border-box",
-    backgroundOrigin: "padding-box"
+    backgroundAttachment: "",
+    backgroundClip: "",
+    backgroundOrigin: ""
   });
   
   // UI state for sidebars
@@ -129,16 +115,16 @@ const TemplateEditorNew = () => {
         
         // Set email styles if available
         if (existingTemplate.styles) {
-          const styles = existingTemplate.styles as Partial<EmailStyles>;
+          const styles = existingTemplate.styles;
           setEmailStyles({
             backgroundColor: styles.backgroundColor || "#FFFFFF",
             backgroundImage: styles.backgroundImage || "",
             backgroundSize: styles.backgroundSize || "cover",
             backgroundRepeat: styles.backgroundRepeat || "no-repeat",
             backgroundPosition: styles.backgroundPosition || "center center",
-            backgroundAttachment: styles.backgroundAttachment || "scroll",
-            backgroundClip: styles.backgroundClip || "border-box",
-            backgroundOrigin: styles.backgroundOrigin || "padding-box"
+            backgroundAttachment: styles.backgroundAttachment || "",
+            backgroundClip: styles.backgroundClip || "",
+            backgroundOrigin: styles.backgroundOrigin || ""
           });
         }
         
@@ -290,15 +276,26 @@ const TemplateEditorNew = () => {
   };
   
   // Handle email styles changes
-  const handleEmailStylesChange = (styles: Partial<EmailStyles>) => {
-    const updatedStyles: EmailStyles = {
-      ...emailStyles,
-      ...styles
+  const handleEmailStylesChange = (styles: any) => {
+    const updatedStyles = {
+      backgroundColor: styles.backgroundColor || emailStyles.backgroundColor,
+      backgroundImage: styles.backgroundImage || emailStyles.backgroundImage,
+      backgroundSize: styles.backgroundSize || emailStyles.backgroundSize,
+      backgroundRepeat: styles.backgroundRepeat || emailStyles.backgroundRepeat,
+      backgroundPosition: styles.backgroundPosition || emailStyles.backgroundPosition,
+      backgroundAttachment: styles.backgroundAttachment || emailStyles.backgroundAttachment,
+      backgroundClip: styles.backgroundClip || emailStyles.backgroundClip,
+      backgroundOrigin: styles.backgroundOrigin || emailStyles.backgroundOrigin
     };
+    
     setEmailStyles(updatedStyles);
     
-    // Update template with new styles
-    const updatedTemplate = { ...template };
+    const updatedTemplate = {
+      ...template,
+      styles: updatedStyles
+    };
+    
+    setTemplate(updatedTemplate);
     addToHistory(updatedTemplate);
   };
   
@@ -374,171 +371,148 @@ const TemplateEditorNew = () => {
   };
   
   return (
-    <div className="flex h-full w-full overflow-hidden">
-      {/* Left Sidebar */}
-      <div className={cn(
-        "h-full border-r bg-muted/30",
-        "transition-all duration-200 ease-in-out",
-        componentSidebarCollapsed ? "w-16" : "w-72"
-      )}>
-        <div className="h-full overflow-y-auto">
-          <ComponentSidebar 
-            collapsed={componentSidebarCollapsed}
-            onToggle={() => setComponentSidebarCollapsed(!componentSidebarCollapsed)}
-            onDragStart={handleComponentDragStart}
-          />
+    <div className="flex flex-col h-screen w-full">
+      {/* Header */}
+      <div className="border-b">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/templates")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <Input
+                value={template.name}
+                onChange={(e) => {
+                  const updatedTemplate = { ...template, name: e.target.value };
+                  setTemplate(updatedTemplate);
+                  addToHistory(updatedTemplate);
+                }}
+                className="text-xl font-bold border-0 border-b border-dashed border-transparent hover:border-input focus-visible:border-input transition-all bg-transparent px-0 py-1"
+              />
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setPreviewMode(!previewMode)}>
+              <Eye className="mr-2 h-4 w-4" />
+              {previewMode ? "Edit" : "Preview"}
+            </Button>
+            <Button onClick={handleSaveTemplate} className="bg-brand-purple hover:bg-brand-purple/90">
+              <Save className="mr-2 h-4 w-4" />
+              Save
+            </Button>
+          </div>
         </div>
+        
+        {!previewMode && (
+          <Tabs defaultValue="design" value={activeTab} onValueChange={setActiveTab} className="px-4">
+            <TabsList>
+              <TabsTrigger value="design" className="flex items-center">
+                <MousePointer className="mr-2 h-4 w-4" />
+                Design
+              </TabsTrigger>
+              <TabsTrigger value="code" className="flex items-center">
+                <Code className="mr-2 h-4 w-4" />
+                HTML
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
       </div>
-
+      
       {/* Main Content */}
-      <div className="flex-1 flex flex-col h-full w-full">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2">
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setComponentSidebarCollapsed(!componentSidebarCollapsed)}
-            >
-              <PanelLeft className="h-4 w-4" />
-            </Button>
-            <Input
-              value={template.name}
-              onChange={(e) => {
-                const updatedTemplate = { ...template, name: e.target.value };
-                setTemplate(updatedTemplate);
-                addToHistory(updatedTemplate);
-              }}
-              placeholder="Template name..."
-              className="w-[200px]"
+      {!previewMode ? (
+        activeTab === "design" ? (
+          <div className="flex-1 flex overflow-hidden w-full">
+            {/* Component Sidebar */}
+            <ComponentSidebar 
+              collapsed={componentSidebarCollapsed}
+              onToggle={() => setComponentSidebarCollapsed(!componentSidebarCollapsed)}
+              onDragStart={handleComponentDragStart}
             />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setPropertiesSidebarCollapsed(!propertiesSidebarCollapsed)}
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Canvas Area */}
-        <div className="flex-1 flex">
-          {!previewMode ? (
-            !activeTab || activeTab === "design" ? (
-              <div className="flex-1 flex flex-col h-full">
-                <div className="flex-1 overflow-auto bg-muted/30">
-                  <div className="mx-4 my-4">
-                    <label className="block text-sm font-medium mb-1">Email Subject</label>
-                    <Input 
-                      value={template.subject}
-                      onChange={(e) => {
-                        const updatedTemplate = { ...template, subject: e.target.value };
-                        setTemplate(updatedTemplate);
-                        addToHistory(updatedTemplate);
-                      }}
-                      placeholder="Enter subject line..."
-                      className="w-full"
-                    />
-                  </div>
-                  
-                  <div className="mx-4 mb-4">
-                    <EmailCanvas 
-                      components={emailComponents}
-                      viewMode={layoutType}
-                      selectedComponentId={selectedComponentId}
-                      onSelectComponent={handleSelectComponent}
-                      onUpdateComponents={handleUpdateComponents}
-                      emailStyles={emailStyles}
-                      onEmailStylesChange={handleEmailStylesChange}
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 overflow-auto p-4">
-                <CodeView 
-                  html={template.html || generateHtml()}
-                  onChange={(html) => {
-                    const updatedTemplate = { ...template, html };
+            
+            {/* Email Canvas */}
+            <div className="flex-1 overflow-auto bg-muted/30">
+              <div className="mb-4 px-4 pt-4">
+                <label className="block text-sm font-medium mb-1">Email Subject</label>
+                <Input 
+                  value={template.subject}
+                  onChange={(e) => {
+                    const updatedTemplate = { ...template, subject: e.target.value };
                     setTemplate(updatedTemplate);
                     addToHistory(updatedTemplate);
                   }}
+                  placeholder="Enter subject line..."
+                  className="w-full"
                 />
               </div>
-            )
-          ) : (
-            <div className="flex-1 overflow-auto bg-muted/30">
-              <div className="border rounded-lg p-4 bg-white m-4">
-                <div className="mb-4 pb-4 border-b flex justify-between items-center">
-                  <div>
-                    <h3 className="font-medium">Preview Mode</h3>
-                    <p className="text-sm text-muted-foreground">This is how your email will appear to recipients</p>
-                  </div>
-                  <Button variant="outline" onClick={() => setPreviewMode(false)}>
-                    Back to Editor
-                  </Button>
-                </div>
-                
-                <div className="max-w-2xl mx-auto border rounded-lg p-6 bg-white shadow-sm">
-                  <div 
-                    className="email-preview"
-                    style={{
-                      backgroundColor: emailStyles.backgroundColor,
-                      backgroundImage: emailStyles.backgroundImage ? `url(${emailStyles.backgroundImage})` : 'none',
-                      backgroundSize: emailStyles.backgroundSize,
-                      backgroundRepeat: emailStyles.backgroundRepeat,
-                      backgroundPosition: emailStyles.backgroundPosition,
-                      backgroundAttachment: emailStyles.backgroundAttachment,
-                      backgroundClip: emailStyles.backgroundClip,
-                      backgroundOrigin: emailStyles.backgroundOrigin
-                    }}
-                  >
-                    <div dangerouslySetInnerHTML={{ __html: parsePlaceholders(generateHtml()) }} />
-                  </div>
-                </div>
-              </div>
+              
+              <EmailCanvas 
+                components={emailComponents}
+                viewMode={layoutType}
+                selectedComponentId={selectedComponentId}
+                onSelectComponent={handleSelectComponent}
+                onUpdateComponents={handleUpdateComponents}
+                emailStyles={emailStyles}
+                onEmailStylesChange={handleEmailStylesChange}
+              />
             </div>
-          )}
-
-          {/* Right Sidebar */}
-          <div className={cn(
-            "h-full border-l bg-muted/30",
-            "transition-all duration-200 ease-in-out",
-            propertiesSidebarCollapsed ? "w-0" : "w-72"
-          )}>
-            <div className="h-full overflow-y-auto p-4">
-              {selectedComponentId ? (
-                <PropertiesSidebar 
-                  collapsed={propertiesSidebarCollapsed}
-                  onToggle={() => setPropertiesSidebarCollapsed(!propertiesSidebarCollapsed)}
-                  selectedComponent={emailComponents.find(comp => comp.id === selectedComponentId) || null}
-                  onComponentUpdate={handleComponentUpdate}
-                />
-              ) : (
-                <div>
-                  <h3 className="font-medium">Email Styles</h3>
-                  <p className="text-sm text-muted-foreground">Customize the styles of your email</p>
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium mb-1">Background Color</label>
-                    <Input 
-                      value={emailStyles.backgroundColor}
-                      onChange={(e) => {
-                        handleEmailStylesChange({ backgroundColor: e.target.value });
-                      }}
-                      placeholder="Enter background color..."
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-              )}
+            
+            {/* Properties Sidebar */}
+            <PropertiesSidebar 
+              collapsed={propertiesSidebarCollapsed}
+              onToggle={() => setPropertiesSidebarCollapsed(!propertiesSidebarCollapsed)}
+              selectedComponent={emailComponents.find(comp => comp.id === selectedComponentId) || null}
+              onComponentUpdate={handleComponentUpdate}
+            />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-auto w-full">
+            <div className="px-4 pt-4">
+              <CodeView 
+                html={template.html || generateHtml()}
+                onChange={(html) => {
+                  const updatedTemplate = { ...template, html };
+                  setTemplate(updatedTemplate);
+                  addToHistory(updatedTemplate);
+                }}
+              />
+            </div>
+          </div>
+        )
+      ) : (
+        <div className="flex-1 overflow-auto bg-muted/30 w-full">
+          <div className="border rounded-lg p-4 bg-white mx-4 mt-4">
+            <div className="mb-4 pb-4 border-b flex justify-between items-center">
+              <div>
+                <h3 className="font-medium">Preview Mode</h3>
+                <p className="text-sm text-muted-foreground">This is how your email will appear to recipients</p>
+              </div>
+              <Button variant="outline" onClick={() => setPreviewMode(false)}>
+                Back to Editor
+              </Button>
+            </div>
+            
+            <div className="max-w-2xl mx-auto border rounded-lg p-6 bg-white shadow-sm">
+              <div 
+                className="email-preview"
+                style={{
+                  backgroundColor: emailStyles.backgroundColor,
+                  backgroundImage: emailStyles.backgroundImage ? `url(${emailStyles.backgroundImage})` : 'none',
+                  backgroundSize: emailStyles.backgroundSize,
+                  backgroundRepeat: emailStyles.backgroundRepeat,
+                  backgroundPosition: emailStyles.backgroundPosition,
+                  backgroundAttachment: emailStyles.backgroundAttachment,
+                  backgroundClip: emailStyles.backgroundClip,
+                  backgroundOrigin: emailStyles.backgroundOrigin
+                }}
+              >
+                <div dangerouslySetInnerHTML={{ __html: parsePlaceholders(generateHtml()) }} />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
