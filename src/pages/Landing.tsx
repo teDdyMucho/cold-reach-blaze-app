@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { registerUser, loginUser } from "@/lib/firebaseService";
 import { useAuth } from "@/contexts/AuthContext";
 
+
 const Landing: React.FC = () => {
   const navigate = useNavigate();
   const { authState, setUser } = useAuth();
