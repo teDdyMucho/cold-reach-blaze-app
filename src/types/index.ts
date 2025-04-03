@@ -118,3 +118,25 @@ export interface ChartData {
   clicked: number;
   replied: number;
 }
+
+export interface UserSettings {
+  theme: string;
+  emailSignature: string;
+  defaultFromName: string;
+  defaultFromEmail: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  displayName: string;
+  settings?: UserSettings;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface AuthState {
+  user: User | null;
+  loading: boolean;
+  error: string | null;
+}

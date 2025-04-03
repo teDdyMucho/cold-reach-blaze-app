@@ -1,8 +1,12 @@
-import { Outlet } from "react-router-dom";
+import React from "react";
 import AppSidebar from "./AppSidebar";
 import Header from "./Header";
 
-const AppLayout = () => {
+interface AppLayoutProps {
+  children: React.ReactNode;
+}
+
+const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   return (
     <div className="flex min-h-screen w-full bg-background">
       <AppSidebar />
@@ -10,7 +14,7 @@ const AppLayout = () => {
         <Header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur" />
         <main className="flex-1 overflow-auto w-full">
           <div className="h-full w-full px-4">
-            <Outlet />
+            {children}
           </div>
         </main>
       </div>

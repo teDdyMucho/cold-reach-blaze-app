@@ -3,55 +3,17 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
-import { 
-  Card, 
-  CardContent 
-} from "@/components/ui/card";
-import { 
-  ResizablePanelGroup, 
-  ResizablePanel, 
-  ResizableHandle 
-} from "@/components/ui/resizable";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { templates } from "@/data/mockData";
-import { Template, TemplateElement, EmailComponent } from "@/types";
-import { 
-  ArrowLeft, 
-  Save, 
-  Eye, 
-  Code, 
-  MousePointer, 
-  Settings,
-  PanelLeft,
-  AlignLeft,
-  AlignCenter,
-  AlignRight
-} from "lucide-react";
-import { v4 as uuidv4 } from "uuid";
+import { PanelLeft, PanelRight, Save, Undo, Redo, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Import new template editor components
+import { v4 as uuidv4 } from "uuid";
+import { Template, EmailComponent } from "@/types";
 import ComponentSidebar from "@/components/templateEditor/ComponentSidebar";
 import EmailCanvas from "@/components/templateEditor/EmailCanvas";
-import PropertiesSidebar from "@/components/templateEditor/PropertiesSidebar";
-import Header from "@/components/templateEditor/Header";
+import ComponentSettings from "@/components/templateEditor/ComponentSettings";
 import CodeView from "@/components/templateEditor/CodeView";
-import AIImageDialog from "@/components/templateEditor/AIImageDialog";
+import { useToast } from "@/components/ui/use-toast";
+import { saveTemplate, getTemplate } from "@/lib/firebaseService";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface EmailStyles {
   backgroundColor: string;
@@ -65,6 +27,7 @@ const TemplateEditorNew = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [activeTab, setActiveTab] = useState("design");
   const [previewMode, setPreviewMode] = useState(false);
@@ -72,6 +35,8 @@ const TemplateEditorNew = () => {
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
   const [history, setHistory] = useState<Template[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   // New state for email components
   const [emailComponents, setEmailComponents] = useState<EmailComponent[]>([]);
@@ -119,79 +84,82 @@ const TemplateEditorNew = () => {
   const [template, setTemplate] = useState<Template>(emptyTemplate);
   
   useEffect(() => {
-    if (id) {
-      const existingTemplate = templates.find(t => t.id === id);
-      if (existingTemplate) {
-        setTemplate(existingTemplate);
-        
-        // Convert old template elements to new email components if needed
-        if (existingTemplate.elements && existingTemplate.elements.length > 0) {
-          const convertedComponents = convertOldElementsToNewComponents(existingTemplate.elements);
-          setEmailComponents(convertedComponents);
-        } else if (existingTemplate.components) {
-          setEmailComponents(existingTemplate.components);
-        }
-        
-        // Set email styles if available
-        if (existingTemplate.styles) {
-          const styles = existingTemplate.styles as Partial<EmailStyles>;
-          setEmailStyles({
-            backgroundColor: styles.backgroundColor || "#FFFFFF",
-            backgroundImage: styles.backgroundImage || "",
-            backgroundSize: styles.backgroundSize || "cover",
-            backgroundRepeat: styles.backgroundRepeat || "no-repeat",
-            backgroundPosition: styles.backgroundPosition || "center center"
+    const loadTemplate = async () => {
+      if (id) {
+        try {
+          setIsLoading(true);
+          const loadedTemplate = await getTemplate(id);
+          if (loadedTemplate) {
+            setTemplate(loadedTemplate);
+            setEmailComponents(loadedTemplate.components || []);
+            setEmailStyles({
+              backgroundColor: loadedTemplate.styles?.backgroundColor || "#FFFFFF",
+              backgroundImage: loadedTemplate.styles?.backgroundImage || "",
+              backgroundSize: loadedTemplate.styles?.backgroundSize || "cover",
+              backgroundRepeat: loadedTemplate.styles?.backgroundRepeat || "no-repeat",
+              backgroundPosition: loadedTemplate.styles?.backgroundPosition || "center center"
+            });
+            // Initialize history with the loaded template
+            setHistory([loadedTemplate]);
+            setHistoryIndex(0);
+          }
+        } catch (error) {
+          console.error("Error loading template:", error);
+          toast({
+            title: "Error",
+            description: "Failed to load template. Please try again.",
+            variant: "destructive"
           });
+        } finally {
+          setIsLoading(false);
         }
-        
-        // Initialize history with the loaded template
-        setHistory([existingTemplate]);
-        setHistoryIndex(0);
       }
-    } else {
-      // Initialize history with the empty template
-      setHistory([emptyTemplate]);
-      setHistoryIndex(0);
-    }
-  }, [id]);
-  
-  // Convert old template elements to new email components format
-  const convertOldElementsToNewComponents = (elements: TemplateElement[]): EmailComponent[] => {
-    return elements.map(element => {
-      let component: EmailComponent = {
-        id: element.id,
-        type: element.type as EmailComponent['type'],
-        content: element.content || '',
-        styles: {
-          width: element.width ? `${element.width}px` : '100%',
-          height: element.height ? `${element.height}px` : 'auto',
-        }
+    };
+
+    loadTemplate();
+  }, [id, toast]);
+
+  // Save template to Firebase
+  const handleSaveTemplate = async () => {
+    try {
+      setIsSaving(true);
+      
+      const templateToSave: Template = {
+        ...template,
+        components: emailComponents,
+        styles: emailStyles,
+        updatedAt: new Date().toISOString()
       };
       
-      if (element.type === 'image' && element.src) {
-        component.src = element.src;
-        component.alt = "Image";
+      // If it's a new template, add createdAt
+      if (!templateToSave.id) {
+        templateToSave.createdAt = new Date().toISOString();
       }
       
-      if (element.type === 'button' && element.link) {
-        component.url = element.link;
-        component.styles = {
-          ...component.styles,
-          backgroundColor: '#3B82F6',
-          color: '#FFFFFF',
-          paddingY: 10,
-          paddingX: 20,
-          borderRadius: 4,
-          textAlign: 'center',
-          cursor: 'pointer',
-          fontWeight: 'bold',
-        };
+      const savedId = await saveTemplate(templateToSave);
+      
+      // Update template ID if it's a new template
+      if (!template.id) {
+        setTemplate(prev => ({ ...prev, id: savedId }));
       }
       
-      return component;
-    });
+      toast({
+        title: "Success",
+        description: "Template saved successfully",
+      });
+      
+    } catch (error) {
+      console.error("Error saving template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save template. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
-  
+
   // Add current state to history
   const addToHistory = (updatedTemplate: Template) => {
     // Truncate history if we're not at the latest state
@@ -268,26 +236,6 @@ const TemplateEditorNew = () => {
     return content.replace(/\{\{(\w+)\}\}/g, (match, placeholder) => {
       return previewData[placeholder as keyof typeof previewData] || match;
     });
-  };
-  
-  // Handle saving the template
-  const handleSaveTemplate = () => {
-    const updatedTemplate = {
-      ...template,
-      components: emailComponents,
-      styles: emailStyles,
-      updatedAt: new Date().toISOString()
-    };
-    
-    // Save logic would go here
-    
-    toast({
-      title: "Template Saved",
-      description: "Your template has been saved successfully!"
-    });
-    
-    // Navigate back to templates page
-    setTimeout(() => navigate("/templates"), 500);
   };
   
   // Handle component selection
@@ -467,7 +415,7 @@ const TemplateEditorNew = () => {
 </body>
 </html>`;
   };
-  
+
   return (
     <div className="flex h-full w-full overflow-hidden">
       {/* Left Sidebar */}
@@ -498,17 +446,33 @@ const TemplateEditorNew = () => {
               <PanelLeft className="h-4 w-4" />
             </Button>
             <Input
+              className="w-60"
+              placeholder="Template Name"
               value={template.name}
-              onChange={(e) => {
-                const updatedTemplate = { ...template, name: e.target.value };
-                setTemplate(updatedTemplate);
-                addToHistory(updatedTemplate);
-              }}
-              placeholder="Template name..."
-              className="w-[200px]"
+              onChange={(e) => setTemplate(prev => ({ ...prev, name: e.target.value }))}
             />
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            {/* Undo/Redo buttons */}
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={historyIndex === 0}
+              onClick={handleUndo}
+            >
+              <Undo className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={historyIndex >= history.length - 1}
+              onClick={handleRedo}
+            >
+              <Redo className="h-4 w-4" />
+            </Button>
             
-            {/* Alignment controls - only show when a component is selected */}
+            {/* Text alignment buttons - only show when a text component is selected */}
             {selectedComponentId && (
               <div className="flex items-center ml-4 border-l pl-4">
                 <Button 
@@ -537,38 +501,6 @@ const TemplateEditorNew = () => {
                 </Button>
               </div>
             )}
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="mr-4">
-              <TabsList>
-                <TabsTrigger value="design" className="flex items-center">
-                  <MousePointer className="mr-2 h-4 w-4" />
-                  Design
-                </TabsTrigger>
-                <TabsTrigger value="code" className="flex items-center">
-                  <Code className="mr-2 h-4 w-4" />
-                  HTML
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <Button variant="outline" onClick={() => setPreviewMode(!previewMode)}>
-              <Eye className="mr-2 h-4 w-4" />
-              {previewMode ? "Edit" : "Preview"}
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleUndo} disabled={historyIndex <= 0}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleRedo} disabled={historyIndex >= history.length - 1}>
-              <ArrowLeft className="h-4 w-4 rotate-180" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setPropertiesSidebarCollapsed(!propertiesSidebarCollapsed)}
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
           </div>
         </div>
 
@@ -672,7 +604,7 @@ const TemplateEditorNew = () => {
           )}>
             <div className="h-full overflow-y-auto p-4">
               {selectedComponentId ? (
-                <PropertiesSidebar 
+                <ComponentSettings 
                   collapsed={propertiesSidebarCollapsed}
                   onToggle={() => setPropertiesSidebarCollapsed(!propertiesSidebarCollapsed)}
                   selectedComponent={emailComponents.find(comp => comp.id === selectedComponentId) || null}

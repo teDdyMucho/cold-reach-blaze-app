@@ -1,54 +1,80 @@
 import { useEffect } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import AppLayout from "@/components/layout/AppLayout";
 import Index from "@/pages/Index";
 import Dashboard from "@/pages/Dashboard";
 import Templates from "@/pages/Templates";
-import TemplateEditor from "@/pages/TemplateEditor";
 import TemplateEditorNew from "@/pages/TemplateEditorNew";
 import Campaigns from "@/pages/Campaigns";
 import Contacts from "@/pages/Contacts";
 import Integrations from "@/pages/Integrations";
-import NotFound from "@/pages/NotFound";
+import Landing from "@/pages/Landing";
 import { Toaster } from "@/components/ui/toaster";
+import { useToast } from '@/components/ui/use-toast';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import "./App.css";
 
 // Create a client
 const queryClient = new QueryClient();
 
-function ScrollToTop() {
-  const { pathname } = useLocation();
+// Protected route component
+const ProtectedRoute = ({ children }) => {
+  const { authState } = useAuth();
+  
+  if (authState.loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+  
+  if (!authState.user) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
+};
 
+// App content with auth context
+function AppContent() {
+  const { authState } = useAuth();
+  const { toast } = useToast();
+  
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
-
-  return null;
-}
-
-function App() {
+    if (authState.error) {
+      toast({
+        title: "Authentication Error",
+        description: authState.error,
+        variant: "destructive"
+      });
+    }
+  }, [authState.error, toast]);
+  
   return (
     <QueryClientProvider client={queryClient}>
       <SidebarProvider className="flex min-h-svh w-full" style={{ margin: 0, padding: 0 }}>
-        <ScrollToTop />
         <Routes>
-          <Route path="/" element={<AppLayout />}>
-            <Route index element={<Index />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="templates" element={<Templates />} />
-            <Route path="templates/new" element={<TemplateEditorNew />} />
-            <Route path="templates/:id" element={<TemplateEditorNew />} />
-            <Route path="campaigns" element={<Campaigns />} />
-            <Route path="contacts" element={<Contacts />} />
-            <Route path="integrations" element={<Integrations />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
+          <Route path="/" element={<Landing />} />
+          <Route path="/index" element={<Index />} />
+          <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+          <Route path="/templates" element={<AppLayout><Templates /></AppLayout>} />
+          <Route path="/template-editor/:id?" element={<ProtectedRoute><AppLayout><TemplateEditorNew /></AppLayout></ProtectedRoute>} />
+          <Route path="/campaigns" element={<AppLayout><Campaigns /></AppLayout>} />
+          <Route path="/contacts" element={<AppLayout><Contacts /></AppLayout>} />
+          <Route path="/integrations" element={<AppLayout><Integrations /></AppLayout>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toaster />
       </SidebarProvider>
     </QueryClientProvider>
+  );
+}
+
+// Main App component that provides auth context
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
