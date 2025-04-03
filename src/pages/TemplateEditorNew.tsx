@@ -37,7 +37,10 @@ import {
   Code, 
   MousePointer, 
   Settings,
-  PanelLeft
+  PanelLeft,
+  AlignLeft,
+  AlignCenter,
+  AlignRight
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { cn } from "@/lib/utils";
@@ -56,9 +59,6 @@ interface EmailStyles {
   backgroundSize: string;
   backgroundRepeat: string;
   backgroundPosition: string;
-  backgroundAttachment: string;
-  backgroundClip: string;
-  backgroundOrigin: string;
 }
 
 const TemplateEditorNew = () => {
@@ -70,8 +70,8 @@ const TemplateEditorNew = () => {
   const [previewMode, setPreviewMode] = useState(false);
   const [layoutType, setLayoutType] = useState<"desktop" | "mobile">("desktop");
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
-  const [historySteps, setHistorySteps] = useState<any[]>([]);
-  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(0);
+  const [history, setHistory] = useState<Template[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   
   // New state for email components
   const [emailComponents, setEmailComponents] = useState<EmailComponent[]>([]);
@@ -80,10 +80,7 @@ const TemplateEditorNew = () => {
     backgroundImage: "",
     backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
-    backgroundPosition: "center center",
-    backgroundAttachment: "scroll",
-    backgroundClip: "border-box",
-    backgroundOrigin: "padding-box"
+    backgroundPosition: "center center"
   });
   
   // UI state for sidebars
@@ -99,19 +96,27 @@ const TemplateEditorNew = () => {
     email: "john.doe@example.com"
   };
   
-  const emptyTemplate = {
+  // Empty template structure
+  const emptyTemplate: Template = {
     id: uuidv4(),
     name: "Untitled Template",
     subject: "",
     content: "",
     html: "",
+    elements: [],
     components: [],
-    styles: emailStyles,
+    styles: {
+      backgroundColor: "#FFFFFF",
+      backgroundImage: "",
+      backgroundSize: "cover",
+      backgroundRepeat: "no-repeat",
+      backgroundPosition: "center center"
+    },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
   
-  const [template, setTemplate] = useState<any>(emptyTemplate);
+  const [template, setTemplate] = useState<Template>(emptyTemplate);
   
   useEffect(() => {
     if (id) {
@@ -135,19 +140,18 @@ const TemplateEditorNew = () => {
             backgroundImage: styles.backgroundImage || "",
             backgroundSize: styles.backgroundSize || "cover",
             backgroundRepeat: styles.backgroundRepeat || "no-repeat",
-            backgroundPosition: styles.backgroundPosition || "center center",
-            backgroundAttachment: styles.backgroundAttachment || "scroll",
-            backgroundClip: styles.backgroundClip || "border-box",
-            backgroundOrigin: styles.backgroundOrigin || "padding-box"
+            backgroundPosition: styles.backgroundPosition || "center center"
           });
         }
         
         // Initialize history with the loaded template
-        setHistorySteps([existingTemplate]);
+        setHistory([existingTemplate]);
+        setHistoryIndex(0);
       }
     } else {
       // Initialize history with the empty template
-      setHistorySteps([emptyTemplate]);
+      setHistory([emptyTemplate]);
+      setHistoryIndex(0);
     }
   }, [id]);
   
@@ -188,58 +192,73 @@ const TemplateEditorNew = () => {
     });
   };
   
-  // Add template change to history
-  const addToHistory = (updatedTemplate: any) => {
-    // If we're not at the end of history, truncate history
-    const newHistory = historySteps.slice(0, currentHistoryIndex + 1);
+  // Add current state to history
+  const addToHistory = (updatedTemplate: Template) => {
+    // Truncate history if we're not at the latest state
+    const newHistory = historyIndex < history.length - 1
+      ? history.slice(0, historyIndex + 1)
+      : history;
     
     // Add new state to history
-    newHistory.push({
-      ...updatedTemplate,
-      updatedAt: new Date().toISOString()
-    });
-    
-    // Limit history to 50 steps
-    if (newHistory.length > 50) {
-      newHistory.shift();
-    }
-    
-    setHistorySteps(newHistory);
-    setCurrentHistoryIndex(newHistory.length - 1);
+    setHistory([...newHistory, updatedTemplate]);
+    setHistoryIndex(newHistory.length);
   };
-  
-  // Undo changes
-  const undo = () => {
-    if (currentHistoryIndex > 0) {
-      setCurrentHistoryIndex(currentHistoryIndex - 1);
-      const previousState = historySteps[currentHistoryIndex - 1];
+
+  // Undo function
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      const previousState = history[historyIndex - 1];
       setTemplate(previousState);
       
+      // Update components if they exist in the previous state
       if (previousState.components) {
         setEmailComponents(previousState.components);
       }
-      
-      if (previousState.styles) {
-        setEmailStyles(previousState.styles);
-      }
     }
   };
-  
-  // Redo changes
-  const redo = () => {
-    if (currentHistoryIndex < historySteps.length - 1) {
-      setCurrentHistoryIndex(currentHistoryIndex + 1);
-      const nextState = historySteps[currentHistoryIndex + 1];
+
+  // Redo function
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      const nextState = history[historyIndex + 1];
       setTemplate(nextState);
       
+      // Update components if they exist in the next state
       if (nextState.components) {
         setEmailComponents(nextState.components);
       }
-      
-      if (nextState.styles) {
-        setEmailStyles(nextState.styles);
-      }
     }
+  };
+
+  // Alignment functions
+  const handleAlignComponents = (alignment: 'left' | 'center' | 'right') => {
+    if (!selectedComponentId) return;
+    
+    const updatedComponents = emailComponents.map(component => {
+      if (component.id === selectedComponentId) {
+        return {
+          ...component,
+          styles: {
+            ...component.styles,
+            textAlign: alignment
+          }
+        };
+      }
+      return component;
+    });
+    
+    setEmailComponents(updatedComponents);
+    
+    // Update template with new components
+    const updatedTemplate = {
+      ...template,
+      components: updatedComponents
+    };
+    
+    setTemplate(updatedTemplate);
+    addToHistory(updatedTemplate);
   };
   
   // Parse placeholders in content
@@ -298,7 +317,7 @@ const TemplateEditorNew = () => {
     setEmailStyles(updatedStyles);
     
     // Update template with new styles
-    const updatedTemplate = { ...template };
+    const updatedTemplate = { ...template, styles: updatedStyles };
     addToHistory(updatedTemplate);
   };
   
@@ -319,8 +338,85 @@ const TemplateEditorNew = () => {
   
   // Generate HTML from components
   const generateHtml = () => {
-    // This would be a more complex function to generate HTML from components
-    // For now, we'll return a simple template
+    // Helper function to convert style object to CSS string
+    const styleToString = (styles: Record<string, any> = {}) => {
+      const cssProperties: string[] = [];
+      
+      // Handle special padding properties
+      if (styles.paddingX !== undefined) {
+        cssProperties.push(`padding-left: ${styles.paddingX}px`);
+        cssProperties.push(`padding-right: ${styles.paddingX}px`);
+      }
+      
+      if (styles.paddingY !== undefined) {
+        cssProperties.push(`padding-top: ${styles.paddingY}px`);
+        cssProperties.push(`padding-bottom: ${styles.paddingY}px`);
+      }
+      
+      // Process all other styles
+      Object.entries(styles).forEach(([key, value]) => {
+        if (key !== 'paddingX' && key !== 'paddingY') {
+          // Convert camelCase to kebab-case for CSS
+          const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+          
+          // Add px unit to numeric values if needed
+          let cssValue = value;
+          if (typeof value === 'number' && !['fontWeight', 'lineHeight', 'opacity', 'zIndex'].includes(key)) {
+            cssValue = `${value}px`;
+          }
+          
+          cssProperties.push(`${cssKey}: ${cssValue}`);
+        }
+      });
+      
+      return cssProperties.join('; ');
+    };
+    
+    // Helper function to generate component HTML
+    const renderComponent = (component: EmailComponent): string => {
+      switch (component.type) {
+        case 'text':
+          return `<div style="${styleToString(component.styles)}">${component.content || ''}</div>`;
+          
+        case 'image':
+          return `<img src="${component.src || 'https://via.placeholder.com/600x200?text=Image'}" alt="${component.alt || ''}" style="${styleToString(component.styles)}" />`;
+          
+        case 'button':
+          return `<div style="text-align: ${component.styles?.textAlign || 'center'}; width: 100%;">
+  <a href="${component.url || '#'}" style="${styleToString(component.styles)}">${component.content || 'Button'}</a>
+</div>`;
+          
+        case 'divider':
+          return `<hr style="${styleToString(component.styles)}" />`;
+          
+        case 'spacer':
+          return `<div style="${styleToString(component.styles)}"></div>`;
+          
+        case 'container':
+          return `<div style="${styleToString(component.styles)}">${component.content || ''}</div>`;
+          
+        case 'columns':
+          if (!component.columns) return '';
+          
+          return `<div style="${styleToString(component.styles)}">
+  ${component.columns.map(column => 
+    `<div style="${styleToString(column.styles)}">
+      ${column.components?.map(comp => renderComponent(comp)).join('\n      ') || ''}
+    </div>`
+  ).join('\n  ')}
+</div>`;
+          
+        case 'text-image':
+          return `<div style="${styleToString(component.styles)}">
+  <div style="${styleToString(component.textStyles)}">${component.content || ''}</div>
+  <img src="${component.src || 'https://via.placeholder.com/600x200?text=Image'}" alt="${component.alt || ''}" style="${styleToString(component.imageStyles)}" />
+</div>`;
+          
+        default:
+          return '';
+      }
+    };
+    
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -333,40 +429,39 @@ const TemplateEditorNew = () => {
       line-height: 1.6; 
       margin: 0;
       padding: 0;
+    }
+    .email-background {
       background-color: ${emailStyles.backgroundColor || '#FFFFFF'};
-      ${emailStyles.backgroundImage ? `background-image: ${emailStyles.backgroundImage};` : ''}
+      ${emailStyles.backgroundImage ? `background-image: url(${emailStyles.backgroundImage});` : ''}
       ${emailStyles.backgroundSize ? `background-size: ${emailStyles.backgroundSize};` : ''}
       ${emailStyles.backgroundRepeat ? `background-repeat: ${emailStyles.backgroundRepeat};` : ''}
       ${emailStyles.backgroundPosition ? `background-position: ${emailStyles.backgroundPosition};` : ''}
-      ${emailStyles.backgroundAttachment ? `background-attachment: ${emailStyles.backgroundAttachment};` : ''}
-      ${emailStyles.backgroundClip ? `background-clip: ${emailStyles.backgroundClip};` : ''}
-      ${emailStyles.backgroundOrigin ? `background-origin: ${emailStyles.backgroundOrigin};` : ''}
+      width: 100%;
+      min-height: 100vh;
     }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .container { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      padding: 20px;
+      background-color: #ffffff;
+    }
     .content { margin-bottom: 30px; }
     .footer { text-align: center; font-size: 12px; color: #666; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    img { max-width: 100%; height: auto; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="content">
-      ${emailComponents.map(component => {
-        if (component.type === 'text') {
-          return `<div style="${Object.entries(component.styles || {}).map(([key, value]) => `${key}: ${value}`).join(';')}">${component.content}</div>`;
-        } else if (component.type === 'image') {
-          return `<img src="${component.src}" alt="${component.alt || ''}" style="${Object.entries(component.styles || {}).map(([key, value]) => `${key}: ${value}`).join(';')}" />`;
-        } else if (component.type === 'button') {
-          return `<a href="${component.url || '#'}" style="${Object.entries(component.styles || {}).map(([key, value]) => `${key}: ${value}`).join(';')}">${component.content}</a>`;
-        } else if (component.type === 'divider') {
-          return `<hr style="${Object.entries(component.styles || {}).map(([key, value]) => `${key}: ${value}`).join(';')}" />`;
-        } else if (component.type === 'spacer') {
-          return `<div style="height: ${component.styles?.height || '20px'}"></div>`;
-        }
-        return '';
-      }).join('\n')}
-    </div>
-    <div class="footer">
-      <p>Your Company | Address | <a href="mailto:info@company.com">info@company.com</a></p>
+  <div class="email-background">
+    <div class="container">
+      <div class="content">
+        ${emailComponents.map(component => renderComponent(component)).join('\n      ')}
+      </div>
+      <div class="footer">
+        <p>Your Company | Address | <a href="mailto:info@company.com">info@company.com</a></p>
+        <p><small>To unsubscribe, <a href="#unsubscribe">click here</a></small></p>
+      </div>
     </div>
   </div>
 </body>
@@ -391,7 +486,7 @@ const TemplateEditorNew = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col h-full w-full">
+      <div className="flex-1 flex flex-col h-full">
         {/* Toolbar */}
         <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2">
           <div className="flex items-center space-x-2">
@@ -412,6 +507,36 @@ const TemplateEditorNew = () => {
               placeholder="Template name..."
               className="w-[200px]"
             />
+            
+            {/* Alignment controls - only show when a component is selected */}
+            {selectedComponentId && (
+              <div className="flex items-center ml-4 border-l pl-4">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => handleAlignComponents('left')}
+                  className="h-8 w-8"
+                >
+                  <AlignLeft className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => handleAlignComponents('center')}
+                  className="h-8 w-8"
+                >
+                  <AlignCenter className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => handleAlignComponents('right')}
+                  className="h-8 w-8"
+                >
+                  <AlignRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
@@ -430,6 +555,12 @@ const TemplateEditorNew = () => {
             <Button variant="outline" onClick={() => setPreviewMode(!previewMode)}>
               <Eye className="mr-2 h-4 w-4" />
               {previewMode ? "Edit" : "Preview"}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleUndo} disabled={historyIndex <= 0}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleRedo} disabled={historyIndex >= history.length - 1}>
+              <ArrowLeft className="h-4 w-4 rotate-180" />
             </Button>
             <Button
               variant="ghost"
@@ -523,10 +654,7 @@ const TemplateEditorNew = () => {
                       backgroundImage: emailStyles.backgroundImage ? `url(${emailStyles.backgroundImage})` : 'none',
                       backgroundSize: emailStyles.backgroundSize,
                       backgroundRepeat: emailStyles.backgroundRepeat,
-                      backgroundPosition: emailStyles.backgroundPosition,
-                      backgroundAttachment: emailStyles.backgroundAttachment,
-                      backgroundClip: emailStyles.backgroundClip,
-                      backgroundOrigin: emailStyles.backgroundOrigin
+                      backgroundPosition: emailStyles.backgroundPosition
                     }}
                   >
                     <div dangerouslySetInnerHTML={{ __html: parsePlaceholders(generateHtml()) }} />
