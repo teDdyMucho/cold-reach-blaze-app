@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -8,12 +9,14 @@ import Dashboard from "@/pages/Dashboard";
 import Templates from "@/pages/Templates";
 import TemplateEditorNew from "@/pages/TemplateEditorNew";
 import Campaigns from "@/pages/Campaigns";
+import CampaignNew from "@/pages/CampaignNew";
 import Contacts from "@/pages/Contacts";
 import Integrations from "@/pages/Integrations";
 import Landing from "@/pages/Landing";
 import { Toaster } from "@/components/ui/toaster";
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import NotFound from "@/pages/NotFound";
 import "./App.css";
 
 // Create a client
@@ -55,12 +58,13 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
           <Route path="/index" element={<Index />} />
-          <Route path="/templates" element={<AppLayout><Templates /></AppLayout>} />
+          <Route path="/templates" element={<ProtectedRoute><AppLayout><Templates /></AppLayout></ProtectedRoute>} />
           <Route path="/template-editor/:id?" element={<ProtectedRoute><AppLayout><TemplateEditorNew /></AppLayout></ProtectedRoute>} />
-          <Route path="/campaigns" element={<AppLayout><Campaigns /></AppLayout>} />
-          <Route path="/contacts" element={<AppLayout><Contacts /></AppLayout>} />
-          <Route path="/integrations" element={<AppLayout><Integrations /></AppLayout>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/campaigns" element={<ProtectedRoute><AppLayout><Campaigns /></AppLayout></ProtectedRoute>} />
+          <Route path="/campaign-new" element={<ProtectedRoute><AppLayout><CampaignNew /></AppLayout></ProtectedRoute>} />
+          <Route path="/contacts" element={<ProtectedRoute><AppLayout><Contacts /></AppLayout></ProtectedRoute>} />
+          <Route path="/integrations" element={<ProtectedRoute><AppLayout><Integrations /></AppLayout></ProtectedRoute>} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster />
       </SidebarProvider>

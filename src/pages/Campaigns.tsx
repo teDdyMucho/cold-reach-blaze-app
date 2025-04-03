@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { campaigns, templates } from "@/data/mockData";
 import { Campaign } from "@/types";
 import { Plus, Search, MailCheck, Send, Clock, Calendar, LineChart } from "lucide-react";
@@ -69,10 +68,7 @@ const Campaigns = () => {
   
   // Function to create a new campaign
   const handleCreateCampaign = () => {
-    toast({
-      title: "Creating New Campaign",
-      description: "This feature will be available soon!"
-    });
+    navigate("/campaign-new");
   };
   
   return (
