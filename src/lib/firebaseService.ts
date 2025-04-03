@@ -23,7 +23,7 @@ import {
 } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from './firebase';
-import { Template, EmailComponent, UserSettings } from '@/types';
+import { Template, EmailComponent, UserSettings, Contact } from '@/types';
 
 // Authentication services
 export const registerUser = async (email: string, password: string, displayName: string) => {
@@ -170,7 +170,7 @@ export const deleteTemplate = async (templateId: string) => {
 };
 
 // Contact services
-export const saveContact = async (contact: any) => {
+export const saveContact = async (contact: Contact): Promise<string> => {
   try {
     const userId = auth.currentUser?.uid;
     if (!userId) throw new Error('User not authenticated');
@@ -194,7 +194,7 @@ export const saveContact = async (contact: any) => {
   }
 };
 
-export const getContact = async (contactId: string) => {
+export const getContact = async (contactId: string): Promise<Contact> => {
   try {
     const userId = auth.currentUser?.uid;
     if (!userId) throw new Error('User not authenticated');
@@ -203,7 +203,7 @@ export const getContact = async (contactId: string) => {
     const contactSnap = await getDoc(contactRef);
     
     if (contactSnap.exists()) {
-      return { id: contactSnap.id, ...contactSnap.data() };
+      return { id: contactSnap.id, ...contactSnap.data() } as Contact;
     } else {
       throw new Error('Contact not found');
     }
@@ -213,18 +213,22 @@ export const getContact = async (contactId: string) => {
   }
 };
 
-export const getUserContacts = async () => {
+export const getUserContacts = async (): Promise<Contact[]> => {
   try {
     const userId = auth.currentUser?.uid;
     if (!userId) throw new Error('User not authenticated');
     
     const contactsRef = collection(db, 'users', userId, 'contacts');
-    const q = query(contactsRef, orderBy('updatedAt', 'desc'));
+    const q = query(contactsRef, orderBy('createdAt', 'desc'));
     const contactsSnap = await getDocs(q);
     
-    const contacts: any[] = [];
+    const contacts: Contact[] = [];
     contactsSnap.forEach((doc) => {
-      contacts.push({ id: doc.id, ...doc.data() });
+      contacts.push({ 
+        id: doc.id, 
+        ...doc.data(),
+        history: doc.data().history || [] 
+      } as Contact);
     });
     
     return contacts;
@@ -234,7 +238,7 @@ export const getUserContacts = async () => {
   }
 };
 
-export const deleteContact = async (contactId: string) => {
+export const deleteContact = async (contactId: string): Promise<void> => {
   try {
     const userId = auth.currentUser?.uid;
     if (!userId) throw new Error('User not authenticated');
