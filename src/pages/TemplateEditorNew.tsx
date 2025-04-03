@@ -415,6 +415,22 @@ const TemplateEditorNew = () => {
           </div>
 
           <div className="flex items-center space-x-2">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="mr-4">
+              <TabsList>
+                <TabsTrigger value="design" className="flex items-center">
+                  <MousePointer className="mr-2 h-4 w-4" />
+                  Design
+                </TabsTrigger>
+                <TabsTrigger value="code" className="flex items-center">
+                  <Code className="mr-2 h-4 w-4" />
+                  HTML
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Button variant="outline" onClick={() => setPreviewMode(!previewMode)}>
+              <Eye className="mr-2 h-4 w-4" />
+              {previewMode ? "Edit" : "Preview"}
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -428,7 +444,7 @@ const TemplateEditorNew = () => {
         {/* Canvas Area */}
         <div className="flex-1 flex">
           {!previewMode ? (
-            !activeTab || activeTab === "design" ? (
+            activeTab !== "code" ? (
               <div className="flex-1 flex flex-col h-full">
                 <div className="flex-1 overflow-auto bg-muted/30">
                   <div className="mx-4 my-4">
@@ -460,14 +476,30 @@ const TemplateEditorNew = () => {
               </div>
             ) : (
               <div className="flex-1 overflow-auto p-4">
-                <CodeView 
-                  html={template.html || generateHtml()}
-                  onChange={(html) => {
-                    const updatedTemplate = { ...template, html };
-                    setTemplate(updatedTemplate);
-                    addToHistory(updatedTemplate);
-                  }}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <h3 className="font-medium">HTML Code</h3>
+                    <CodeView 
+                      html={template.html || generateHtml()}
+                      onChange={(html) => {
+                        const updatedTemplate = { ...template, html };
+                        setTemplate(updatedTemplate);
+                        addToHistory(updatedTemplate);
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-medium">Preview</h3>
+                    <div className="border rounded-lg bg-white p-4 h-[500px] overflow-auto">
+                      <iframe
+                        srcDoc={template.html || generateHtml()}
+                        title="Email Preview"
+                        className="w-full h-full border-0"
+                        sandbox="allow-same-origin"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             )
           ) : (
