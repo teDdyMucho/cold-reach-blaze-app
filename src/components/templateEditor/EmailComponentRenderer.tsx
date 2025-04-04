@@ -102,7 +102,7 @@ const EmailComponentRenderer = ({
           >
             <div style={{ textAlign: styles.textAlign || 'center' }}>
               <img 
-                src={component.src || 'https://via.placeholder.com/600x200?text=Image'} 
+                src={component.src || 'https://placehold.co/600x200/e2e8f0/1e40af?text=Image'} 
                 alt={component.alt || 'Image'} 
                 style={getCssStyles(styles)}
               />

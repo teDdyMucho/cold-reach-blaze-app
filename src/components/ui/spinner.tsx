@@ -1,4 +1,3 @@
-
 import React from "react";
 import { cn } from "@/lib/utils";
 
@@ -121,6 +120,9 @@ export function WaveSpinner({
     xl: 64,
   }[size];
   
+  // Generate a unique ID for the animation
+  const animationId = React.useMemo(() => `wave-spinner-${Math.random().toString(36).substr(2, 9)}`, []);
+  
   return (
     <div 
       className={cn(
@@ -144,15 +146,15 @@ export function WaveSpinner({
               width: `${sizeValue * 0.1}px`,
               transform: `rotate(${rotation}deg) translate(0, ${sizeValue * 0.3}px)`,
               transformOrigin: `center ${-sizeValue * 0.3}px`,
-              animation: "waveSpinner 1.2s infinite ease-in-out",
+              animation: `${animationId} 1.2s infinite ease-in-out`,
               animationDelay: `${i / bars}s`,
               opacity: String(0.3 + (0.7 * i) / bars),
             }}
           />
         );
       })}
-      <style jsx>{`
-        @keyframes waveSpinner {
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes ${animationId} {
           0%, 100% {
             opacity: ${0.3 + (0.7 * bars) / bars};
             transform: rotate(${360 / bars}deg) translate(0, ${sizeValue * 0.3}px) scale(0.7);
@@ -162,7 +164,7 @@ export function WaveSpinner({
             transform: rotate(${360 / bars}deg) translate(0, ${sizeValue * 0.3}px) scale(1);
           }
         }
-      `}</style>
+      `}} />
     </div>
   );
 }

@@ -1,11 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bell, Search, User } from "lucide-react";
+import { Bell, Search, User, LogOut, Settings, UserCircle } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useToast } from "@/components/ui/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { logoutUser } from "@/lib/firebaseService";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HeaderProps {
   className?: string;
@@ -16,6 +26,7 @@ const Header = ({ className }: HeaderProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showNewEditor, setShowNewEditor] = useState(false);
+  const { authState } = useAuth();
   
   useEffect(() => {
     const isTemplateEditor = location.pathname.includes("/templates/editor");
@@ -40,6 +51,24 @@ const Header = ({ className }: HeaderProps) => {
         });
         setShowNewEditor(true);
       }
+    }
+  };
+  
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
+      navigate("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive"
+      });
     }
   };
   
@@ -96,9 +125,32 @@ const Header = ({ className }: HeaderProps) => {
           <span className="sr-only">Notifications</span>
         </Button>
 
-        <Avatar className="h-9 w-9 cursor-pointer">
-          <AvatarFallback className="bg-primary/10 text-primary text-sm">JD</AvatarFallback>
-        </Avatar>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Avatar className="h-9 w-9 cursor-pointer">
+              <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                {authState.user?.displayName ? authState.user.displayName.substring(0, 2).toUpperCase() : 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="cursor-pointer">
+              <UserCircle className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer">
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="cursor-pointer text-red-600" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Logout</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

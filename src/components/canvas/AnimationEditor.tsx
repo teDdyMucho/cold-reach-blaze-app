@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -346,7 +345,7 @@ const AnimationEditor: React.FC<{
       id: `element-${Date.now()}`,
       type,
       content: type === "text" ? "Your Text Here" : undefined,
-      src: type === "image" ? "https://via.placeholder.com/200" : undefined,
+      src: type === "image" ? "https://placehold.co/200/e2e8f0/1e40af" : undefined,
       x: 100,
       y: 100,
       width: type === "text" ? 200 : 200,

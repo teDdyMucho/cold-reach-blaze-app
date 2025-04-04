@@ -83,6 +83,8 @@ export interface Contact {
   lastContacted?: string;
   history: EmailHistory[];
   createdAt: string;
+  updatedAt?: string;
+  userId?: string;
 }
 
 export interface EmailHistory {

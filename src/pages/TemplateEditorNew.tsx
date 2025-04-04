@@ -12,7 +12,7 @@ import EmailCanvas from "@/components/templateEditor/EmailCanvas";
 import ComponentSettings from "@/components/templateEditor/ComponentSettings";
 import CodeView from "@/components/templateEditor/CodeView";
 import { useToast } from "@/components/ui/use-toast";
-import { saveTemplate, getTemplate } from "@/lib/firebaseService";
+import { saveTemplate, getTemplateById } from "@/lib/firebaseService";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface EmailStyles {
@@ -88,7 +88,7 @@ const TemplateEditorNew = () => {
       if (id) {
         try {
           setIsLoading(true);
-          const loadedTemplate = await getTemplate(id);
+          const loadedTemplate = await getTemplateById(id);
           if (loadedTemplate) {
             setTemplate(loadedTemplate);
             setEmailComponents(loadedTemplate.components || []);
@@ -327,7 +327,7 @@ const TemplateEditorNew = () => {
           return `<div style="${styleToString(component.styles)}">${component.content || ''}</div>`;
           
         case 'image':
-          return `<img src="${component.src || 'https://via.placeholder.com/600x200?text=Image'}" alt="${component.alt || ''}" style="${styleToString(component.styles)}" />`;
+          return `<img src="${component.src || 'https://placehold.co/600x200/e2e8f0/1e40af?text=Image'}" alt="${component.alt || ''}" style="${styleToString(component.styles)}" />`;
           
         case 'button':
           return `<div style="text-align: ${component.styles?.textAlign || 'center'}; width: 100%;">
@@ -357,7 +357,7 @@ const TemplateEditorNew = () => {
         case 'text-image':
           return `<div style="${styleToString(component.styles)}">
   <div style="${styleToString(component.textStyles)}">${component.content || ''}</div>
-  <img src="${component.src || 'https://via.placeholder.com/600x200?text=Image'}" alt="${component.alt || ''}" style="${styleToString(component.imageStyles)}" />
+  <img src="${component.src || 'https://placehold.co/600x200/e2e8f0/1e40af?text=Image'}" alt="${component.alt || ''}" style="${styleToString(component.imageStyles)}" />
 </div>`;
           
         default:

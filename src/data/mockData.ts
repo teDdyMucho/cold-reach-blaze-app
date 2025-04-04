@@ -1,4 +1,3 @@
-
 import { Campaign, Contact, EmailHistory, EmailProvider, Template, ChartData } from "@/types";
 import { v4 as uuidv4 } from "uuid";
 
@@ -103,7 +102,7 @@ export const templates: Template[] = [
       {
         id: uuidv4(),
         type: "image",
-        src: "https://via.placeholder.com/600x300",
+        src: "https://placehold.co/600x300/e2e8f0/1e40af",
         width: 600,
         height: 300
       },
