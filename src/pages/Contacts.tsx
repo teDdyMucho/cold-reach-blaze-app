@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +15,7 @@ import { Plus, Search, Users, UserRound, Mail, Clock, Tag, ChevronDown, Upload, 
 import ContactForm from "@/components/contacts/ContactForm";
 import ImportContactsDialog from "@/components/contacts/ImportContactsDialog";
 import ContactsExport from "@/components/contacts/ContactsExport";
-import AddToNewCampaign from "@/components/contacts/AddToNewCampaign";
+import CreateContactList from "@/components/contacts/AddToNewCampaign";
 
 const Contacts = () => {
   const { toast } = useToast();
@@ -325,7 +324,7 @@ const Contacts = () => {
               size="sm"
               onClick={() => setCampaignDialogOpen(true)}
             >
-              Create Campaign
+              Create Contact List
             </Button>
             <Button
               variant="destructive"
@@ -592,7 +591,7 @@ const Contacts = () => {
       />
       
       {/* Add to Campaign Dialog */}
-      <AddToNewCampaign
+      <CreateContactList
         open={campaignDialogOpen}
         onOpenChange={setCampaignDialogOpen}
         selectedContacts={getSelectedContacts()}

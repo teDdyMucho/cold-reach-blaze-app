@@ -1,4 +1,3 @@
-
 import { Campaign } from '@/types';
 import { db, auth } from './firebase';
 import {
@@ -21,18 +20,28 @@ export const createCampaign = async (campaign: Campaign): Promise<string> => {
     const userId = auth.currentUser?.uid;
     if (!userId) throw new Error('User not authenticated');
     
+    // Always use the proper path structure for campaigns
     const campaignRef = campaign.id 
       ? doc(db, 'users', userId, 'campaigns', campaign.id)
       : doc(collection(db, 'users', userId, 'campaigns'));
     
+    // Ensure all required fields are present
     const campaignData = {
       ...campaign,
       id: campaignRef.id,
       updatedAt: serverTimestamp(),
-      createdAt: campaign.createdAt || serverTimestamp()
+      createdAt: campaign.createdAt || serverTimestamp(),
+      userId: userId, // Add userId explicitly for security and querying
+      status: campaign.status || 'draft',
+      recipients: campaign.recipients || 0,
+      opened: campaign.opened || 0,
+      clicked: campaign.clicked || 0,
+      replied: campaign.replied || 0
     };
     
+    // Save the campaign document
     await setDoc(campaignRef, campaignData);
+    console.log(`Campaign saved successfully at /users/${userId}/campaigns/${campaignRef.id}`);
     return campaignRef.id;
   } catch (error) {
     console.error('Error creating campaign:', error);

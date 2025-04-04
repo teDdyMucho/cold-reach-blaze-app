@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Campaign, Template } from "@/types";
-import { Plus, Search, MailCheck, Send, Clock, Calendar, LineChart, Loader2 } from "lucide-react";
+import { Plus, Search, MailCheck, Send, Clock, Calendar, LineChart, Loader2, Edit, AlertCircle, CheckCircle, PauseCircle, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getUserCampaigns, getUserTemplates, deleteCampaign } from "@/lib/firebaseService";
 import { useLoading } from "@/hooks/use-loading";
@@ -24,38 +24,43 @@ const Campaigns = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   // Fetch campaigns and templates from Firestore
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        startLoading({
-          message: "Loading campaigns...",
-          spinnerType: "pulse"
-        });
-        
-        // Fetch both campaigns and templates in parallel
-        const [userCampaigns, userTemplates] = await Promise.all([
-          getUserCampaigns(),
-          getUserTemplates()
-        ]);
-        
-        setCampaigns(userCampaigns);
-        setTemplates(userTemplates);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load campaigns. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-        stopLoading();
-      }
-    };
-    
-    fetchData();
+  const fetchCampaigns = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      startLoading({
+        message: "Loading campaigns...",
+        spinnerType: "pulse"
+      });
+      
+      // Fetch both campaigns and templates in parallel
+      const [userCampaigns, userTemplates] = await Promise.all([
+        getUserCampaigns(),
+        getUserTemplates()
+      ]);
+      
+      setCampaigns(userCampaigns);
+      setTemplates(userTemplates);
+      
+      toast({
+        title: "Campaigns Synced",
+        description: `Successfully loaded ${userCampaigns.length} campaigns.`
+      });
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load campaigns. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      stopLoading();
+    }
   }, [toast, startLoading, stopLoading]);
+
+  useEffect(() => {
+    fetchCampaigns();
+  }, [fetchCampaigns]);
   
   // Filter campaigns based on search term and status filter
   useEffect(() => {
@@ -92,15 +97,40 @@ const Campaigns = () => {
   const renderStatus = (status: string) => {
     switch (status) {
       case "draft":
-        return <Badge variant="outline">Draft</Badge>;
+        return (
+          <Badge variant="outline" className="flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            Draft
+          </Badge>
+        );
       case "scheduled":
-        return <Badge variant="secondary">Scheduled</Badge>;
+        return (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            Scheduled
+          </Badge>
+        );
       case "sending":
-        return <Badge className="bg-brand-blue text-white">Sending</Badge>;
+        return (
+          <Badge className="bg-brand-blue text-white flex items-center gap-1">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Sending
+          </Badge>
+        );
       case "sent":
-        return <Badge className="bg-green-500 text-white">Sent</Badge>;
+        return (
+          <Badge className="bg-green-500 text-white flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" />
+            Sent
+          </Badge>
+        );
       case "paused":
-        return <Badge variant="destructive">Paused</Badge>;
+        return (
+          <Badge variant="destructive" className="flex items-center gap-1">
+            <PauseCircle className="h-3 w-3" />
+            Paused
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -109,6 +139,11 @@ const Campaigns = () => {
   // Function to create a new campaign
   const handleCreateCampaign = () => {
     navigate("/campaign-new");
+  };
+
+  // Function to handle editing a campaign
+  const handleEditCampaign = (campaignId: string) => {
+    navigate(`/campaign-new?id=${campaignId}`);
   };
 
   // Function to delete a campaign
@@ -166,7 +201,7 @@ const Campaigns = () => {
       
       {/* Campaign Analytics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="animate-instruction" style={{"--delay": "0"} as React.CSSProperties}>
+        <Card key="campaign-metrics" className="animate-instruction" style={{"--delay": "0"} as React.CSSProperties}>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <MailCheck className="h-5 w-5 text-brand-purple" />
@@ -179,7 +214,7 @@ const Campaigns = () => {
           </CardContent>
         </Card>
         
-        <Card className="animate-instruction" style={{"--delay": "1"} as React.CSSProperties}>
+        <Card key="emails-sent" className="animate-instruction" style={{"--delay": "1"} as React.CSSProperties}>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Send className="h-5 w-5 text-brand-blue" />
@@ -192,7 +227,7 @@ const Campaigns = () => {
           </CardContent>
         </Card>
         
-        <Card className="animate-instruction" style={{"--delay": "2"} as React.CSSProperties}>
+        <Card key="open-rate" className="animate-instruction" style={{"--delay": "2"} as React.CSSProperties}>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <LineChart className="h-5 w-5 text-brand-teal" />
@@ -232,6 +267,15 @@ const Campaigns = () => {
               <SelectItem value="paused">Paused</SelectItem>
             </SelectContent>
           </Select>
+          <Button 
+            variant="outline" 
+            onClick={fetchCampaigns} 
+            className="flex items-center gap-1"
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Sync
+          </Button>
         </div>
         
         <Button onClick={handleCreateCampaign} className="bg-brand-purple hover:bg-brand-purple/90">
@@ -259,19 +303,19 @@ const Campaigns = () => {
                     </div>
                     
                     <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1" key={`${campaign.id}-template`}>
                         <span className="font-medium">Template:</span> {getTemplateName(campaign.templateId)}
                       </div>
                       
                       {campaign.scheduled && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1" key={`${campaign.id}-scheduled`}>
                           <Calendar className="h-4 w-4" />
                           <span>Scheduled: {new Date(campaign.scheduled).toLocaleDateString()}</span>
                         </div>
                       )}
                       
                       {campaign.sentAt && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1" key={`${campaign.id}-sent`}>
                           <Clock className="h-4 w-4" />
                           <span>Sent: {new Date(campaign.sentAt).toLocaleDateString()}</span>
                         </div>
@@ -287,6 +331,16 @@ const Campaigns = () => {
                       });
                     }}>
                       View Stats
+                    </Button>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center gap-1"
+                      onClick={() => handleEditCampaign(campaign.id)}
+                    >
+                      <Edit className="h-4 w-4" />
+                      Edit
                     </Button>
                     
                     <Button variant="outline" size="sm" onClick={() => {
@@ -310,18 +364,21 @@ const Campaigns = () => {
                       <span>Progress</span>
                       <span>{campaign.opened} of {campaign.recipients} opened</span>
                     </div>
-                    <Progress value={(campaign.opened / campaign.recipients) * 100} className="h-2" />
+                    <Progress 
+                      value={(campaign.opened / campaign.recipients) * 100} 
+                      className={`h-2 ${campaign.status === "sending" ? "animate-pulse" : ""}`} 
+                    />
                     
                     <div className="grid grid-cols-3 gap-4 mt-4">
-                      <div className="text-center">
+                      <div className="text-center" key={`${campaign.id}-open-rate`}>
                         <div className="text-sm font-medium">{Math.round((campaign.opened / campaign.recipients) * 100)}%</div>
                         <div className="text-xs text-muted-foreground">Open Rate</div>
                       </div>
-                      <div className="text-center">
+                      <div className="text-center" key={`${campaign.id}-click-rate`}>
                         <div className="text-sm font-medium">{Math.round((campaign.clicked / campaign.recipients) * 100)}%</div>
                         <div className="text-xs text-muted-foreground">Click Rate</div>
                       </div>
-                      <div className="text-center">
+                      <div className="text-center" key={`${campaign.id}-reply-rate`}>
                         <div className="text-sm font-medium">{Math.round((campaign.replied / campaign.recipients) * 100)}%</div>
                         <div className="text-xs text-muted-foreground">Reply Rate</div>
                       </div>

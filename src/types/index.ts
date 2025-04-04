@@ -17,6 +17,9 @@ export interface Template {
   };
   createdAt: string;
   updatedAt: string;
+  userId?: string;
+  creatorName?: string;
+  isPublic?: boolean;
 }
 
 export interface TemplateElement {
@@ -61,6 +64,7 @@ export interface Campaign {
   id: string;
   name: string;
   templateId: string;
+  contactListId: string;
   status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused';
   recipients: number;
   opened: number;
@@ -69,6 +73,7 @@ export interface Campaign {
   scheduled?: string;
   sentAt?: string;
   createdAt: string;
+  subject?: string;
 }
 
 export interface Contact {
@@ -95,6 +100,17 @@ export interface EmailHistory {
   subject: string;
   status: 'delivered' | 'opened' | 'clicked' | 'replied' | 'bounced';
   reply?: string;
+}
+
+export interface SMTPConfig {
+  host: string;
+  port: string;
+  username: string;
+  password: string;
+  secure: boolean;
+  fromName: string;
+  fromEmail: string;
+  updatedAt?: any;
 }
 
 export interface EmailProvider {

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PanelLeft, PanelRight, Save, Undo, Redo, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
+import { PanelLeft, PanelRight, Save, Undo, Redo, AlignLeft, AlignCenter, AlignRight, Globe, Lock, Eye, Monitor, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { v4 as uuidv4 } from "uuid";
 import { Template, EmailComponent } from "@/types";
@@ -14,6 +14,9 @@ import CodeView from "@/components/templateEditor/CodeView";
 import { useToast } from "@/components/ui/use-toast";
 import { saveTemplate, getTemplateById } from "@/lib/firebaseService";
 import { useAuth } from "@/contexts/AuthContext";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface EmailStyles {
   backgroundColor: string;
@@ -61,6 +64,40 @@ const TemplateEditorNew = () => {
     email: "john.doe@example.com"
   };
   
+  // Helper function to convert style object to CSS string
+  const styleToString = (styles: Record<string, any> = {}) => {
+    const cssProperties: string[] = [];
+    
+    // Handle special padding properties
+    if (styles.paddingX !== undefined) {
+      cssProperties.push(`padding-left: ${styles.paddingX}px`);
+      cssProperties.push(`padding-right: ${styles.paddingX}px`);
+    }
+    
+    if (styles.paddingY !== undefined) {
+      cssProperties.push(`padding-top: ${styles.paddingY}px`);
+      cssProperties.push(`padding-bottom: ${styles.paddingY}px`);
+    }
+    
+    // Process all other styles
+    Object.entries(styles).forEach(([key, value]) => {
+      if (key !== 'paddingX' && key !== 'paddingY') {
+        // Convert camelCase to kebab-case for CSS
+        const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+        
+        // Add px unit to numeric values if needed
+        let cssValue = value;
+        if (typeof value === 'number' && !['fontWeight', 'lineHeight', 'opacity', 'zIndex'].includes(key)) {
+          cssValue = `${value}px`;
+        }
+        
+        cssProperties.push(`${cssKey}: ${cssValue}`);
+      }
+    });
+    
+    return cssProperties.join('; ');
+  };
+  
   // Empty template structure
   const emptyTemplate: Template = {
     id: uuidv4(),
@@ -79,6 +116,7 @@ const TemplateEditorNew = () => {
     },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    isPublic: false,
   };
   
   const [template, setTemplate] = useState<Template>(emptyTemplate);
@@ -158,6 +196,21 @@ const TemplateEditorNew = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Toggle public/private status
+  const handleTogglePublic = () => {
+    setTemplate(prev => ({
+      ...prev,
+      isPublic: !prev.isPublic
+    }));
+    
+    // Add to history
+    const updatedTemplate = {
+      ...template,
+      isPublic: !template.isPublic
+    };
+    addToHistory(updatedTemplate);
   };
 
   // Add current state to history
@@ -286,40 +339,6 @@ const TemplateEditorNew = () => {
   
   // Generate HTML from components
   const generateHtml = () => {
-    // Helper function to convert style object to CSS string
-    const styleToString = (styles: Record<string, any> = {}) => {
-      const cssProperties: string[] = [];
-      
-      // Handle special padding properties
-      if (styles.paddingX !== undefined) {
-        cssProperties.push(`padding-left: ${styles.paddingX}px`);
-        cssProperties.push(`padding-right: ${styles.paddingX}px`);
-      }
-      
-      if (styles.paddingY !== undefined) {
-        cssProperties.push(`padding-top: ${styles.paddingY}px`);
-        cssProperties.push(`padding-bottom: ${styles.paddingY}px`);
-      }
-      
-      // Process all other styles
-      Object.entries(styles).forEach(([key, value]) => {
-        if (key !== 'paddingX' && key !== 'paddingY') {
-          // Convert camelCase to kebab-case for CSS
-          const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
-          
-          // Add px unit to numeric values if needed
-          let cssValue = value;
-          if (typeof value === 'number' && !['fontWeight', 'lineHeight', 'opacity', 'zIndex'].includes(key)) {
-            cssValue = `${value}px`;
-          }
-          
-          cssProperties.push(`${cssKey}: ${cssValue}`);
-        }
-      });
-      
-      return cssProperties.join('; ');
-    };
-    
     // Helper function to generate component HTML
     const renderComponent = (component: EmailComponent): string => {
       switch (component.type) {
@@ -472,6 +491,99 @@ const TemplateEditorNew = () => {
               <Redo className="h-4 w-4" />
             </Button>
             
+            {/* Preview toggle */}
+            <div className="flex items-center space-x-2 ml-4 border-l pl-4">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={previewMode ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPreviewMode(!previewMode)}
+                      className="flex items-center"
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      {previewMode ? "Exit Preview" : "Preview"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Toggle preview mode to see how your email will look</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              {/* Layout type toggle - only show in preview mode */}
+              {previewMode && (
+                <div className="flex items-center space-x-2 ml-2">
+                  <Button
+                    variant={layoutType === "desktop" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLayoutType("desktop")}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Monitor className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={layoutType === "mobile" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLayoutType("mobile")}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Smartphone className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            {/* Public/Private toggle */}
+            <div className="flex items-center space-x-2 ml-4 border-l pl-4">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="public-mode"
+                        checked={template.isPublic}
+                        onCheckedChange={handleTogglePublic}
+                      />
+                      <Label htmlFor="public-mode" className="flex items-center">
+                        {template.isPublic ? (
+                          <Globe className="h-4 w-4 mr-1" />
+                        ) : (
+                          <Lock className="h-4 w-4 mr-1" />
+                        )}
+                        {template.isPublic ? "Public" : "Private"}
+                      </Label>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{template.isPublic 
+                      ? "Anyone can use this template" 
+                      : "Only you can use this template"}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            
+            {/* Save button */}
+            <Button
+              variant="default"
+              onClick={handleSaveTemplate}
+              disabled={isSaving}
+              className="ml-4"
+            >
+              {isSaving ? (
+                <span className="flex items-center">
+                  <span className="animate-spin mr-1">⌛</span> Saving...
+                </span>
+              ) : (
+                <span className="flex items-center">
+                  <Save className="h-4 w-4 mr-1" /> Save
+                </span>
+              )}
+            </Button>
+            
             {/* Text alignment buttons - only show when a text component is selected */}
             {selectedComponentId && (
               <div className="flex items-center ml-4 border-l pl-4">
@@ -506,7 +618,85 @@ const TemplateEditorNew = () => {
 
         {/* Canvas Area */}
         <div className="flex-1 flex">
-          {!previewMode ? (
+          {previewMode ? (
+            <div className="flex-1 flex flex-col h-full">
+              <div className="flex-1 overflow-auto bg-muted/30 p-4">
+                <div className={cn(
+                  "mx-auto bg-white shadow-md",
+                  layoutType === "desktop" ? "max-w-4xl" : "max-w-sm"
+                )}>
+                  <div className="p-4 border-b">
+                    <div className="font-medium">Subject: {template.subject || "No subject"}</div>
+                    <div className="text-sm text-muted-foreground">From: Your Name &lt;your.email@example.com&gt;</div>
+                    <div className="text-sm text-muted-foreground">To: Recipient &lt;recipient@example.com&gt;</div>
+                  </div>
+                  <div 
+                    className="p-4"
+                    style={{ 
+                      backgroundColor: emailStyles.backgroundColor || "#FFFFFF",
+                      backgroundImage: emailStyles.backgroundImage ? `url(${emailStyles.backgroundImage})` : undefined,
+                      backgroundSize: emailStyles.backgroundSize || "cover",
+                      backgroundRepeat: emailStyles.backgroundRepeat || "no-repeat",
+                      backgroundPosition: emailStyles.backgroundPosition || "center center"
+                    }}
+                  >
+                    <div 
+                      dangerouslySetInnerHTML={{ 
+                        __html: emailComponents.map(component => {
+                          // Use the renderComponent function from generateHtml
+                          const renderComponent = (component: EmailComponent): string => {
+                            switch (component.type) {
+                              case 'text':
+                                return `<div style="${styleToString(component.styles)}">${component.content || ''}</div>`;
+                                
+                              case 'image':
+                                return `<img src="${component.src || 'https://placehold.co/600x200/e2e8f0/1e40af?text=Image'}" alt="${component.alt || ''}" style="${styleToString(component.styles)}" />`;
+                                
+                              case 'button':
+                                return `<div style="text-align: ${component.styles?.textAlign || 'center'}; width: 100%;">
+                                  <a href="${component.url || '#'}" style="${styleToString(component.styles)}">${component.content || 'Button'}</a>
+                                </div>`;
+                                
+                              case 'divider':
+                                return `<hr style="${styleToString(component.styles)}" />`;
+                                
+                              case 'spacer':
+                                return `<div style="${styleToString(component.styles)}"></div>`;
+                                
+                              case 'container':
+                                return `<div style="${styleToString(component.styles)}">${component.content || ''}</div>`;
+                                
+                              case 'columns':
+                                if (!component.columns) return '';
+                                
+                                return `<div style="${styleToString(component.styles)}">
+                                  ${component.columns.map(column => 
+                                    `<div style="${styleToString(column.styles)}">
+                                      ${column.components?.map(comp => renderComponent(comp)).join('\n      ') || ''}
+                                    </div>`
+                                  ).join('\n  ')}
+                                </div>`;
+                                
+                              case 'text-image':
+                                return `<div style="${styleToString(component.styles)}">
+                                  <div style="${styleToString(component.textStyles)}">${component.content || ''}</div>
+                                  <img src="${component.src || 'https://placehold.co/600x200/e2e8f0/1e40af?text=Image'}" alt="${component.alt || ''}" style="${styleToString(component.imageStyles)}" />
+                                </div>`;
+                                
+                              default:
+                                return '';
+                            }
+                          };
+                          
+                          return renderComponent(component);
+                        }).join('\n')
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
             activeTab !== "code" ? (
               <div className="flex-1 flex flex-col h-full">
                 <div className="flex-1 overflow-auto bg-muted/30">
@@ -565,35 +755,6 @@ const TemplateEditorNew = () => {
                 </div>
               </div>
             )
-          ) : (
-            <div className="flex-1 overflow-auto bg-muted/30">
-              <div className="border rounded-lg p-4 bg-white m-4">
-                <div className="mb-4 pb-4 border-b flex justify-between items-center">
-                  <div>
-                    <h3 className="font-medium">Preview Mode</h3>
-                    <p className="text-sm text-muted-foreground">This is how your email will appear to recipients</p>
-                  </div>
-                  <Button variant="outline" onClick={() => setPreviewMode(false)}>
-                    Back to Editor
-                  </Button>
-                </div>
-                
-                <div className="max-w-2xl mx-auto border rounded-lg p-6 bg-white shadow-sm">
-                  <div 
-                    className="email-preview"
-                    style={{
-                      backgroundColor: emailStyles.backgroundColor,
-                      backgroundImage: emailStyles.backgroundImage ? `url(${emailStyles.backgroundImage})` : 'none',
-                      backgroundSize: emailStyles.backgroundSize,
-                      backgroundRepeat: emailStyles.backgroundRepeat,
-                      backgroundPosition: emailStyles.backgroundPosition
-                    }}
-                  >
-                    <div dangerouslySetInnerHTML={{ __html: parsePlaceholders(generateHtml()) }} />
-                  </div>
-                </div>
-              </div>
-            </div>
           )}
 
           {/* Right Sidebar */}
