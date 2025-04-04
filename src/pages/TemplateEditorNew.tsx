@@ -140,7 +140,7 @@ const TemplateEditorNew = () => {
       
       // Update template ID if it's a new template
       if (!template.id) {
-        setTemplate(prev => ({ ...prev, id: savedId }));
+        setTemplate({ ...template, id: savedId });
       }
       
       toast({

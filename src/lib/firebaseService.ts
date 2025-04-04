@@ -82,19 +82,23 @@ export const getTemplateById = async (templateId: string): Promise<Template | nu
   }
 };
 
-export const saveTemplate = async (template: Template): Promise<Template> => {
+export const getTemplate = getTemplateById;
+
+export const saveTemplate = async (template: Partial<Template>): Promise<string> => {
   try {
     const templatesCollection = collection(db, "templates");
+    
+    const sanitizedTemplate = { ...template };
     
     if (template.id) {
       // Update existing template
       const templateDocRef = doc(db, "templates", template.id);
-      await updateDoc(templateDocRef, template);
-      return template;
+      await updateDoc(templateDocRef, sanitizedTemplate);
+      return template.id;
     } else {
       // Create new template
-      const newDocRef = await addDoc(templatesCollection, template);
-      return { ...template, id: newDocRef.id };
+      const newDocRef = await addDoc(templatesCollection, sanitizedTemplate);
+      return newDocRef.id;
     }
   } catch (error) {
     console.error("Error saving template:", error);
@@ -149,17 +153,21 @@ export const getCampaignById = async (campaignId: string): Promise<Campaign | nu
   }
 };
 
-export const saveCampaign = async (campaign: Campaign): Promise<void> => {
+export const saveCampaign = async (campaign: Partial<Campaign>): Promise<string> => {
   try {
     const campaignsCollection = collection(db, "campaigns");
+    
+    const sanitizedCampaign = { ...campaign };
 
     if (campaign.id) {
       // Update existing campaign
       const campaignDocRef = doc(db, "campaigns", campaign.id);
-      await updateDoc(campaignDocRef, campaign);
+      await updateDoc(campaignDocRef, sanitizedCampaign);
+      return campaign.id;
     } else {
       // Create new campaign
-      await addDoc(campaignsCollection, campaign);
+      const newDocRef = await addDoc(campaignsCollection, sanitizedCampaign);
+      return newDocRef.id;
     }
   } catch (error) {
     console.error("Error saving campaign:", error);
@@ -229,7 +237,6 @@ export const getContactById = async (contactId: string): Promise<Contact | null>
   }
 };
 
-// Fix the saveContact function
 export const saveContact = async (contact: Partial<Contact>): Promise<Contact> => {
   try {
     // Get current user
@@ -243,8 +250,7 @@ export const saveContact = async (contact: Partial<Contact>): Promise<Contact> =
     const contactsRef = collection(db, `users/${currentUser.uid}/contacts`);
     
     // Add createdAt if it's a new contact
-    const now = new Date().toISOString();
-    let updatedContact: Partial<Contact> = {
+    const contactWithTimestamp = {
       ...contact,
       updatedAt: now,
     };
@@ -321,17 +327,21 @@ export const getEmailProviderById = async (emailProviderId: string): Promise<Ema
   }
 };
 
-export const saveEmailProvider = async (emailProvider: EmailProvider): Promise<void> => {
+export const saveEmailProvider = async (emailProvider: Partial<EmailProvider>): Promise<string> => {
   try {
     const emailProvidersCollection = collection(db, "emailProviders");
+    
+    const sanitizedEmailProvider = { ...emailProvider };
 
     if (emailProvider.id) {
       // Update existing email provider
       const emailProviderDocRef = doc(db, "emailProviders", emailProvider.id);
-      await updateDoc(emailProviderDocRef, emailProvider);
+      await updateDoc(emailProviderDocRef, sanitizedEmailProvider);
+      return emailProvider.id;
     } else {
       // Create new email provider
-      await addDoc(emailProvidersCollection, emailProvider);
+      const newDocRef = await addDoc(emailProvidersCollection, sanitizedEmailProvider);
+      return newDocRef.id;
     }
   } catch (error) {
     console.error("Error saving email provider:", error);
