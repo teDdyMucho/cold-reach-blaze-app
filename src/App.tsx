@@ -11,13 +11,14 @@ import Campaigns from "@/pages/Campaigns";
 import CampaignNew from "@/pages/CampaignNew";
 import Contacts from "@/pages/Contacts";
 import Integrations from "@/pages/Integrations";
+import Settings from "@/pages/Settings";
 import Landing from "@/pages/Landing";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from '@/hooks/use-toast';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { PageTransition, AppLoader } from "@/components/ui/page-transition";
 import NotFound from "@/pages/NotFound";
-import { WaveSpinner } from "@/components/ui/spinner"; // Use named import
+import { PulseSpinner } from "@/components/ui/spinner"; 
 import { LoadingProvider } from "@/hooks/use-loading";
 import "./App.css";
 
@@ -35,7 +36,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   if (authState.loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background/80 backdrop-blur-sm">
-        <WaveSpinner size="lg" variant="primary" />
+        <PulseSpinner size="lg" variant="primary" />
         <p className="mt-4 text-primary font-medium">Loading your account...</p>
       </div>
     );
@@ -76,6 +77,7 @@ function AppContent() {
           <Route path="/campaign-new" element={<ProtectedRoute><AppLayout><CampaignNew /></AppLayout></ProtectedRoute>} />
           <Route path="/contacts" element={<ProtectedRoute><AppLayout><Contacts /></AppLayout></ProtectedRoute>} />
           <Route path="/integrations" element={<ProtectedRoute><AppLayout><Integrations /></AppLayout></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <PageTransition />

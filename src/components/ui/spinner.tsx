@@ -1,4 +1,3 @@
-
 import React from "react";
 import { cn } from "@/lib/utils";
 
@@ -106,81 +105,20 @@ export function PulseSpinner({
   );
 }
 
-// Circular progress spinner with a cool wave effect
-export function WaveSpinner({
-  size = "md",
-  variant = "primary",
-  className,
-  ...props
-}: Omit<SpinnerProps, "label" | "showLabel">) {
-  const bars = 12;
-  const sizeValue = {
-    sm: 16,
-    md: 32,
-    lg: 48,
-    xl: 64,
-  }[size];
-  
-  return (
-    <div 
-      className={cn(
-        "relative flex items-center justify-center",
-        sizeClasses[size],
-        className
-      )} 
-      {...props}
-    >
-      {Array.from({ length: bars }).map((_, i) => {
-        const rotation = (i * 360) / bars;
-        return (
-          <div
-            key={i}
-            className={dotClasses}
-            style={{
-              height: `${sizeValue * 0.35}px`,
-              width: `${sizeValue * 0.1}px`,
-              transform: `rotate(${rotation}deg) translate(0, ${sizeValue * 0.3}px)`,
-              transformOrigin: `center ${-sizeValue * 0.3}px`,
-              animation: "waveSpinner 1.2s infinite ease-in-out",
-              animationDelay: `${i / bars}s`,
-              opacity: String(0.3 + (0.7 * i) / bars),
-            }}
-          />
-        );
-      })}
-      <style jsx>{`
-        @keyframes waveSpinner {
-          0%, 100% {
-            opacity: ${0.3 + (0.7 * bars) / bars};
-            transform: rotate(${360 / bars}deg) translate(0, ${sizeValue * 0.3}px) scale(0.7);
-          }
-          50% {
-            opacity: 1;
-            transform: rotate(${360 / bars}deg) translate(0, ${sizeValue * 0.3}px) scale(1);
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
-
 // Loading overlay for full-screen or container loading states
 export function LoadingOverlay({
   variant = "primary",
   label = "Loading...",
   showLabel = true,
-  spinnerType = "wave",
+  spinnerType = "pulse",
   fullScreen = false,
   className,
   ...props
 }: SpinnerProps & {
-  spinnerType?: "default" | "pulse" | "wave";
+  spinnerType?: "default" | "pulse";
   fullScreen?: boolean;
 }) {
-  const SpinnerComponent = 
-    spinnerType === "pulse" ? PulseSpinner :
-    spinnerType === "wave" ? WaveSpinner : 
-    Spinner;
+  const SpinnerComponent = spinnerType === "pulse" ? PulseSpinner : Spinner;
 
   return (
     <div

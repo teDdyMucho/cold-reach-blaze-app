@@ -1,5 +1,4 @@
-
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   Sidebar, 
   SidebarContent, 
@@ -12,8 +11,12 @@ import {
   SidebarMenuItem,
   SidebarMenuButton
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Mail, Users, Settings, PenTool, Laptop } from "lucide-react";
+import { LayoutDashboard, Mail, Users, Settings, PenTool, Laptop, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { logoutUser } from "@/lib/firebaseService";
+import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
 
 const menuItems = [
   {
@@ -50,6 +53,27 @@ const menuItems = [
 
 const AppSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { authState } = useAuth();
+  const { toast } = useToast();
+  
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
+      navigate("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
   
   return (
     <Sidebar>
@@ -89,14 +113,28 @@ const AppSidebar = () => {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-4 border-t">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-            <span className="text-xs font-medium">JD</span>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+              <span className="text-xs font-medium">
+                {authState.user?.displayName ? authState.user.displayName.substring(0, 2).toUpperCase() : 'U'}
+              </span>
+            </div>
+            <div className="text-sm">
+              <p className="font-medium">{authState.user?.displayName || "User"}</p>
+              <p className="text-muted-foreground text-xs">{authState.user?.email || ""}</p>
+            </div>
           </div>
-          <div className="text-sm">
-            <p className="font-medium">John Doe</p>
-            <p className="text-muted-foreground text-xs">john@example.com</p>
-          </div>
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-100/50 -ml-2 pl-2"
+            onClick={handleLogout}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Logout</span>
+          </Button>
         </div>
       </SidebarFooter>
     </Sidebar>
