@@ -1,56 +1,34 @@
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where,
-  orderBy,
-  limit,
-  serverTimestamp,
-  Timestamp
-} from 'firebase/firestore';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut,
-  sendPasswordResetEmail,
-  updateProfile,
-  onAuthStateChanged
-} from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, auth, storage } from './firebase';
-import { Template, EmailComponent, UserSettings, Contact, Campaign } from '@/types';
+import { initializeApp } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
+import { getFirestore, collection, getDocs, getDoc, doc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { v4 as uuidv4 } from 'uuid';
+import { Template, Campaign, Contact, EmailProvider, User } from "@/types";
 
-// Authentication services
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+// Authentication functions
 export const registerUser = async (email: string, password: string, displayName: string) => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    
-    // Update profile with display name
-    await updateProfile(userCredential.user, {
-      displayName: displayName
-    });
-    
-    // Create user document in Firestore
-    await setDoc(doc(db, 'users', userCredential.user.uid), {
-      email,
-      displayName,
-      createdAt: serverTimestamp(),
-      settings: {
-        theme: 'light',
-        emailSignature: '',
-        defaultFromName: displayName,
-        defaultFromEmail: email
-      }
-    });
-    
+    await updateProfile(userCredential.user, { displayName });
     return userCredential.user;
-  } catch (error) {
-    console.error('Error registering user:', error);
+  } catch (error: any) {
+    console.error("Error registering user:", error);
     throw error;
   }
 };
@@ -59,8 +37,8 @@ export const loginUser = async (email: string, password: string) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
-  } catch (error) {
-    console.error('Error logging in:', error);
+  } catch (error: any) {
+    console.error("Error logging in user:", error);
     throw error;
   }
 };
@@ -68,17 +46,8 @@ export const loginUser = async (email: string, password: string) => {
 export const logoutUser = async () => {
   try {
     await signOut(auth);
-  } catch (error) {
-    console.error('Error logging out:', error);
-    throw error;
-  }
-};
-
-export const resetPassword = async (email: string) => {
-  try {
-    await sendPasswordResetEmail(auth, email);
-  } catch (error) {
-    console.error('Error resetting password:', error);
+  } catch (error: any) {
+    console.error("Error logging out:", error);
     throw error;
   }
 };
@@ -92,338 +61,312 @@ export const getCurrentUser = () => {
   });
 };
 
-// Template services
-export const saveTemplate = async (template: Template) => {
+// Template functions
+export const getUserTemplates = async (): Promise<Template[]> => {
   try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
+    const db = getFirestore();
+    const templatesCollection = collection(db, "templates");
+    const templatesSnapshot = await getDocs(templatesCollection);
     
-    const templateRef = template.id 
-      ? doc(db, 'users', userId, 'templates', template.id)
-      : doc(collection(db, 'users', userId, 'templates'));
+    const templatesList = templatesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Template[];
     
-    const templateData = {
-      ...template,
-      id: templateRef.id,
-      updatedAt: serverTimestamp(),
-      createdAt: template.createdAt || serverTimestamp()
-    };
-    
-    await setDoc(templateRef, templateData);
-    return templateRef.id;
+    return templatesList;
   } catch (error) {
-    console.error('Error saving template:', error);
+    console.error("Error fetching templates:", error);
     throw error;
   }
 };
 
-export const getTemplate = async (templateId: string) => {
+export const getTemplateById = async (templateId: string): Promise<Template | null> => {
   try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
+    const db = getFirestore();
+    const templateDocRef = doc(db, "templates", templateId);
+    const templateDocSnapshot = await getDoc(templateDocRef);
     
-    const templateRef = doc(db, 'users', userId, 'templates', templateId);
-    const templateSnap = await getDoc(templateRef);
-    
-    if (templateSnap.exists()) {
-      return { id: templateSnap.id, ...templateSnap.data() } as Template;
-    } else {
-      throw new Error('Template not found');
-    }
-  } catch (error) {
-    console.error('Error getting template:', error);
-    throw error;
-  }
-};
-
-export const getUserTemplates = async () => {
-  try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
-    
-    const templatesRef = collection(db, 'users', userId, 'templates');
-    const q = query(templatesRef, orderBy('updatedAt', 'desc'));
-    const templatesSnap = await getDocs(q);
-    
-    const templates: Template[] = [];
-    templatesSnap.forEach((doc) => {
-      templates.push({ id: doc.id, ...doc.data() } as Template);
-    });
-    
-    return templates;
-  } catch (error) {
-    console.error('Error getting templates:', error);
-    throw error;
-  }
-};
-
-export const deleteTemplate = async (templateId: string) => {
-  try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
-    
-    await deleteDoc(doc(db, 'users', userId, 'templates', templateId));
-  } catch (error) {
-    console.error('Error deleting template:', error);
-    throw error;
-  }
-};
-
-// Contact services
-export const saveContact = async (contact: Contact): Promise<string> => {
-  try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
-    
-    const contactRef = contact.id 
-      ? doc(db, 'users', userId, 'contacts', contact.id)
-      : doc(collection(db, 'users', userId, 'contacts'));
-    
-    // Create a new object to avoid TypeScript errors
-    const contactData: any = {
-      ...contact,
-      id: contactRef.id,
-      updatedAt: serverTimestamp(),
-      createdAt: serverTimestamp()
-    };
-    
-    await setDoc(contactRef, contactData);
-    return contactRef.id;
-  } catch (error) {
-    console.error('Error saving contact:', error);
-    throw error;
-  }
-};
-
-export const getContact = async (contactId: string): Promise<Contact> => {
-  try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
-    
-    const contactRef = doc(db, 'users', userId, 'contacts', contactId);
-    const contactSnap = await getDoc(contactRef);
-    
-    if (contactSnap.exists()) {
-      return { id: contactSnap.id, ...contactSnap.data() } as Contact;
-    } else {
-      throw new Error('Contact not found');
-    }
-  } catch (error) {
-    console.error('Error getting contact:', error);
-    throw error;
-  }
-};
-
-export const getUserContacts = async (): Promise<Contact[]> => {
-  try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
-    
-    const contactsRef = collection(db, 'users', userId, 'contacts');
-    const q = query(contactsRef, orderBy('createdAt', 'desc'));
-    const contactsSnap = await getDocs(q);
-    
-    const contacts: Contact[] = [];
-    contactsSnap.forEach((doc) => {
-      contacts.push({ 
-        id: doc.id, 
-        ...doc.data(),
-        history: doc.data().history || [] 
-      } as Contact);
-    });
-    
-    return contacts;
-  } catch (error) {
-    console.error('Error getting contacts:', error);
-    throw error;
-  }
-};
-
-export const deleteContact = async (contactId: string): Promise<void> => {
-  try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
-    
-    await deleteDoc(doc(db, 'users', userId, 'contacts', contactId));
-  } catch (error) {
-    console.error('Error deleting contact:', error);
-    throw error;
-  }
-};
-
-// User settings services
-export const updateUserSettings = async (settings: UserSettings) => {
-  try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
-    
-    await updateDoc(doc(db, 'users', userId), {
-      settings,
-      updatedAt: serverTimestamp()
-    });
-  } catch (error) {
-    console.error('Error updating user settings:', error);
-    throw error;
-  }
-};
-
-export const getUserSettings = async () => {
-  try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
-    
-    const userDoc = await getDoc(doc(db, 'users', userId));
-    
-    if (userDoc.exists() && userDoc.data().settings) {
-      return userDoc.data().settings as UserSettings;
-    } else {
+    if (templateDocSnapshot.exists()) {
       return {
-        theme: 'light',
-        emailSignature: '',
-        defaultFromName: '',
-        defaultFromEmail: ''
-      } as UserSettings;
-    }
-  } catch (error) {
-    console.error('Error getting user settings:', error);
-    throw error;
-  }
-};
-
-// Image upload service
-export const uploadImage = async (file: File) => {
-  try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
-    
-    const storageRef = ref(storage, `users/${userId}/images/${Date.now()}_${file.name}`);
-    await uploadBytes(storageRef, file);
-    
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
-  } catch (error) {
-    console.error('Error uploading image:', error);
-    throw error;
-  }
-};
-
-// Campaign services
-export const saveCampaign = async (campaign: Campaign): Promise<string> => {
-  try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
-    
-    const campaignRef = campaign.id 
-      ? doc(db, 'users', userId, 'campaigns', campaign.id)
-      : doc(collection(db, 'users', userId, 'campaigns'));
-    
-    // Create a new object without type checking to allow for Firestore timestamps
-    const campaignData: any = {
-      ...campaign,
-      id: campaignRef.id,
-      updatedAt: serverTimestamp(),
-      createdAt: campaign.createdAt ? Timestamp.fromDate(new Date(campaign.createdAt)) : serverTimestamp()
-    };
-    
-    // Convert date strings to Firestore timestamps
-    if (campaign.scheduled) {
-      campaignData.scheduled = Timestamp.fromDate(new Date(campaign.scheduled));
-    }
-    
-    if (campaign.sentAt) {
-      campaignData.sentAt = Timestamp.fromDate(new Date(campaign.sentAt));
-    }
-    
-    await setDoc(campaignRef, campaignData);
-    return campaignRef.id;
-  } catch (error) {
-    console.error('Error saving campaign:', error);
-    throw error;
-  }
-};
-
-export const getCampaign = async (campaignId: string): Promise<Campaign> => {
-  try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
-    
-    const campaignRef = doc(db, 'users', userId, 'campaigns', campaignId);
-    const campaignSnap = await getDoc(campaignRef);
-    
-    if (campaignSnap.exists()) {
-      const data = campaignSnap.data();
-      
-      // Convert Firestore timestamps to ISO strings
-      const campaign = { 
-        id: campaignSnap.id, 
-        ...data,
-        createdAt: data.createdAt?.toDate().toISOString() || new Date().toISOString(),
-      } as Campaign;
-      
-      if (data.scheduled) {
-        campaign.scheduled = data.scheduled.toDate().toISOString();
-      }
-      
-      if (data.sentAt) {
-        campaign.sentAt = data.sentAt.toDate().toISOString();
-      }
-      
-      return campaign;
+        id: templateDocSnapshot.id,
+        ...templateDocSnapshot.data(),
+      } as Template;
     } else {
-      throw new Error('Campaign not found');
+      return null;
     }
   } catch (error) {
-    console.error('Error getting campaign:', error);
+    console.error("Error fetching template:", error);
     throw error;
   }
 };
 
+export const saveTemplate = async (template: Template): Promise<Template> => {
+  try {
+    const db = getFirestore();
+    const templatesCollection = collection(db, "templates");
+    
+    if (template.id) {
+      // Update existing template
+      const templateDocRef = doc(db, "templates", template.id);
+      await updateDoc(templateDocRef, template);
+      return template;
+    } else {
+      // Create new template
+      const newDocRef = await addDoc(templatesCollection, template);
+      return { ...template, id: newDocRef.id };
+    }
+  } catch (error) {
+    console.error("Error saving template:", error);
+    throw error;
+  }
+};
+
+export const deleteTemplate = async (templateId: string): Promise<void> => {
+  try {
+    const db = getFirestore();
+    const templateDocRef = doc(db, "templates", templateId);
+    await deleteDoc(templateDocRef);
+  } catch (error) {
+    console.error("Error deleting template:", error);
+    throw error;
+  }
+};
+
+// Campaign functions
 export const getUserCampaigns = async (): Promise<Campaign[]> => {
   try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
+    const db = getFirestore();
+    const campaignsCollection = collection(db, "campaigns");
+    const campaignsSnapshot = await getDocs(campaignsCollection);
     
-    const campaignsRef = collection(db, 'users', userId, 'campaigns');
-    const q = query(campaignsRef, orderBy('createdAt', 'desc'));
-    const campaignsSnap = await getDocs(q);
+    const campaignsList = campaignsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Campaign[];
     
-    const campaigns: Campaign[] = [];
-    campaignsSnap.forEach((doc) => {
-      const data = doc.data();
-      
-      // Convert Firestore timestamps to ISO strings
-      const campaign = { 
-        id: doc.id, 
-        ...data,
-        createdAt: data.createdAt?.toDate().toISOString() || new Date().toISOString(),
-      } as Campaign;
-      
-      if (data.scheduled) {
-        campaign.scheduled = data.scheduled.toDate().toISOString();
-      }
-      
-      if (data.sentAt) {
-        campaign.sentAt = data.sentAt.toDate().toISOString();
-      }
-      
-      campaigns.push(campaign);
-    });
-    
-    return campaigns;
+    return campaignsList;
   } catch (error) {
-    console.error('Error getting campaigns:', error);
+    console.error("Error fetching campaigns:", error);
+    throw error;
+  }
+};
+
+export const getCampaignById = async (campaignId: string): Promise<Campaign | null> => {
+  try {
+    const db = getFirestore();
+    const campaignDocRef = doc(db, "campaigns", campaignId);
+    const campaignDocSnapshot = await getDoc(campaignDocRef);
+    
+    if (campaignDocSnapshot.exists()) {
+      return {
+        id: campaignDocSnapshot.id,
+        ...campaignDocSnapshot.data(),
+      } as Campaign;
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching campaign:", error);
+    throw error;
+  }
+};
+
+export const saveCampaign = async (campaign: Campaign): Promise<void> => {
+  try {
+    const db = getFirestore();
+    const campaignsCollection = collection(db, "campaigns");
+
+    if (campaign.id) {
+      // Update existing campaign
+      const campaignDocRef = doc(db, "campaigns", campaign.id);
+      await updateDoc(campaignDocRef, campaign);
+    } else {
+      // Create new campaign
+      await addDoc(campaignsCollection, campaign);
+    }
+  } catch (error) {
+    console.error("Error saving campaign:", error);
     throw error;
   }
 };
 
 export const deleteCampaign = async (campaignId: string): Promise<void> => {
   try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
-    
-    await deleteDoc(doc(db, 'users', userId, 'campaigns', campaignId));
+    const db = getFirestore();
+    const campaignDocRef = doc(db, "campaigns", campaignId);
+    await deleteDoc(campaignDocRef);
   } catch (error) {
-    console.error('Error deleting campaign:', error);
+    console.error("Error deleting campaign:", error);
+    throw error;
+  }
+};
+
+// Contact functions
+export const getUserContacts = async (): Promise<Contact[]> => {
+  try {
+    const db = getFirestore();
+    const contactsCollection = collection(db, "contacts");
+    const contactsSnapshot = await getDocs(contactsCollection);
+    
+    const contactsList = contactsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Contact[];
+    
+    return contactsList;
+  } catch (error) {
+    console.error("Error fetching contacts:", error);
+    throw error;
+  }
+};
+
+export const getContactById = async (contactId: string): Promise<Contact | null> => {
+  try {
+    const db = getFirestore();
+    const contactDocRef = doc(db, "contacts", contactId);
+    const contactDocSnapshot = await getDoc(contactDocRef);
+    
+    if (contactDocSnapshot.exists()) {
+      return {
+        id: contactDocSnapshot.id,
+        ...contactDocSnapshot.data(),
+      } as Contact;
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching contact:", error);
+    throw error;
+  }
+};
+
+// Fix the saveContact function
+export const saveContact = async (contact: Partial<Contact>): Promise<Contact> => {
+  try {
+    const db = getFirestore();
+    const contactsRef = collection(db, "contacts");
+    
+    // Add createdAt if it's a new contact
+    const contactWithTimestamp = {
+      ...contact,
+      createdAt: contact.createdAt || new Date().toISOString(),
+    };
+    
+    if (contact.id) {
+      // Update existing contact
+      const docRef = doc(db, "contacts", contact.id);
+      await updateDoc(docRef, contactWithTimestamp);
+      return { ...contactWithTimestamp, id: contact.id } as Contact;
+    } else {
+      // Create new contact
+      const newDocRef = await addDoc(contactsRef, contactWithTimestamp);
+      return { ...contactWithTimestamp, id: newDocRef.id } as Contact;
+    }
+  } catch (error) {
+    console.error("Error saving contact:", error);
+    throw error;
+  }
+};
+
+export const deleteContact = async (contactId: string): Promise<void> => {
+  try {
+    const db = getFirestore();
+    const contactDocRef = doc(db, "contacts", contactId);
+    await deleteDoc(contactDocRef);
+  } catch (error) {
+    console.error("Error deleting contact:", error);
+    throw error;
+  }
+};
+
+// Email Provider functions
+export const getUserEmailProviders = async (): Promise<EmailProvider[]> => {
+  try {
+    const db = getFirestore();
+    const emailProvidersCollection = collection(db, "emailProviders");
+    const emailProvidersSnapshot = await getDocs(emailProvidersCollection);
+    
+    const emailProvidersList = emailProvidersSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as EmailProvider[];
+    
+    return emailProvidersList;
+  } catch (error) {
+    console.error("Error fetching email providers:", error);
+    throw error;
+  }
+};
+
+export const getEmailProviderById = async (emailProviderId: string): Promise<EmailProvider | null> => {
+  try {
+    const db = getFirestore();
+    const emailProviderDocRef = doc(db, "emailProviders", emailProviderId);
+    const emailProviderDocSnapshot = await getDoc(emailProviderDocRef);
+    
+    if (emailProviderDocSnapshot.exists()) {
+      return {
+        id: emailProviderDocSnapshot.id,
+        ...emailProviderDocSnapshot.data(),
+      } as EmailProvider;
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching email provider:", error);
+    throw error;
+  }
+};
+
+export const saveEmailProvider = async (emailProvider: EmailProvider): Promise<void> => {
+  try {
+    const db = getFirestore();
+    const emailProvidersCollection = collection(db, "emailProviders");
+
+    if (emailProvider.id) {
+      // Update existing email provider
+      const emailProviderDocRef = doc(db, "emailProviders", emailProvider.id);
+      await updateDoc(emailProviderDocRef, emailProvider);
+    } else {
+      // Create new email provider
+      await addDoc(emailProvidersCollection, emailProvider);
+    }
+  } catch (error) {
+    console.error("Error saving email provider:", error);
+    throw error;
+  }
+};
+
+export const deleteEmailProvider = async (emailProviderId: string): Promise<void> => {
+  try {
+    const db = getFirestore();
+    const emailProviderDocRef = doc(db, "emailProviders", emailProviderId);
+    await deleteDoc(emailProviderDocRef);
+  } catch (error) {
+    console.error("Error deleting email provider:", error);
+    throw error;
+  }
+};
+
+// Storage functions (e.g., for images)
+export const uploadImage = async (file: File, storagePath: string): Promise<string> => {
+  try {
+    const storageRef = ref(storage, `${storagePath}/${uuidv4()}`);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+  } catch (error) {
+    console.error("Error uploading image:", error);
+    throw error;
+  }
+};
+
+export const deleteImage = async (imageUrl: string): Promise<void> => {
+  try {
+    const storageRef = ref(storage, imageUrl);
+    await deleteObject(storageRef);
+  } catch (error) {
+    console.error("Error deleting image:", error);
     throw error;
   }
 };

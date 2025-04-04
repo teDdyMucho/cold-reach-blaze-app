@@ -82,6 +82,7 @@ export interface Contact {
   status: 'active' | 'unsubscribed' | 'bounced';
   lastContacted?: string;
   history: EmailHistory[];
+  createdAt: string;
 }
 
 export interface EmailHistory {

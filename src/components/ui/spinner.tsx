@@ -1,3 +1,4 @@
+
 import React from "react";
 import { cn } from "@/lib/utils";
 
@@ -145,7 +146,7 @@ export function WaveSpinner({
               transformOrigin: `center ${-sizeValue * 0.3}px`,
               animation: "waveSpinner 1.2s infinite ease-in-out",
               animationDelay: `${i / bars}s`,
-              opacity: 0.3 + (0.7 * i) / bars,
+              opacity: String(0.3 + (0.7 * i) / bars),
             }}
           />
         );
@@ -153,7 +154,7 @@ export function WaveSpinner({
       <style jsx>{`
         @keyframes waveSpinner {
           0%, 100% {
-            opacity: 0.3 + (0.7 * ${bars} / ${bars});
+            opacity: ${0.3 + (0.7 * bars) / bars};
             transform: rotate(${360 / bars}deg) translate(0, ${sizeValue * 0.3}px) scale(0.7);
           }
           50% {
