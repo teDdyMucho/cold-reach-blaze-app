@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,9 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
-import { Contact } from "@/types";
-import { saveContact } from "@/lib/firebaseService";
+import { Contact, ContactGroup } from "@/types";
+import { saveContact, getContactGroups } from "@/lib/firebaseService";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const contactFormSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -25,6 +25,7 @@ const contactFormSchema = z.object({
   lastName: z.string().optional(),
   company: z.string().optional(),
   position: z.string().optional(),
+  groupId: z.string().optional(),
 });
 
 type ContactFormValues = z.infer<typeof contactFormSchema> & { tags?: string[] };
@@ -39,6 +40,29 @@ const ContactForm = ({ onSubmit, onCancel, existingContact }: ContactFormProps) 
   const { toast } = useToast();
   const [tags, setTags] = React.useState<string[]>(existingContact?.tags || []);
   const [tagInput, setTagInput] = React.useState<string>("");
+  const [contactGroups, setContactGroups] = React.useState<ContactGroup[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = React.useState(false);
+  
+  useEffect(() => {
+    const fetchContactGroups = async () => {
+      setIsLoadingGroups(true);
+      try {
+        const groups = await getContactGroups();
+        setContactGroups(groups);
+      } catch (error) {
+        console.error("Error fetching contact groups:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load contact groups.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingGroups(false);
+      }
+    };
+    
+    fetchContactGroups();
+  }, [toast]);
   
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactFormSchema),
@@ -48,6 +72,7 @@ const ContactForm = ({ onSubmit, onCancel, existingContact }: ContactFormProps) 
       lastName: existingContact?.lastName || "",
       company: existingContact?.company || "",
       position: existingContact?.position || "",
+      groupId: existingContact?.groupId || "",
     },
   });
   
@@ -67,7 +92,7 @@ const ContactForm = ({ onSubmit, onCancel, existingContact }: ContactFormProps) 
   
   const handleFormSubmit = async (values: ContactFormValues) => {
     try {
-      const newContact: Contact = {
+      const contactData: Partial<Contact> = {
         id: existingContact?.id || "",
         email: values.email,
         firstName: values.firstName || "",
@@ -75,15 +100,20 @@ const ContactForm = ({ onSubmit, onCancel, existingContact }: ContactFormProps) 
         company: values.company || "",
         position: values.position || "",
         tags: tags,
+        groupId: values.groupId || undefined,
         status: existingContact?.status || "active",
         history: existingContact?.history || [],
+        createdAt: existingContact?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       
-      const contactId = await saveContact(newContact);
+      const contactId = await saveContact(contactData);
       
-      if (!existingContact) {
-        newContact.id = contactId;
-      }
+      const newContact: Contact = {
+        ...contactData,
+        id: existingContact?.id || contactId,
+        userId: existingContact?.userId || "",
+      } as Contact;
       
       onSubmit(newContact);
       
@@ -177,6 +207,36 @@ const ContactForm = ({ onSubmit, onCancel, existingContact }: ContactFormProps) 
             )}
           />
         </div>
+        
+        <FormField
+          control={form.control}
+          name="groupId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Contact Group</FormLabel>
+              <Select 
+                onValueChange={field.onChange} 
+                defaultValue={field.value}
+                disabled={isLoadingGroups}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a group" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {contactGroups.map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         
         <div className="space-y-2">
           <FormLabel>Tags</FormLabel>

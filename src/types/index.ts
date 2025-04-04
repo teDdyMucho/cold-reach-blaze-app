@@ -71,9 +71,13 @@ export interface Campaign {
   clicked: number;
   replied: number;
   scheduled?: string;
-  sentAt?: string;
+  scheduledDate?: string | null;
+  sentAt?: string | null;
   createdAt: string;
-  subject?: string;
+  updatedAt?: string;
+  subject: string;
+  html?: string;
+  failed?: number;
 }
 
 export interface Contact {
@@ -84,12 +88,23 @@ export interface Contact {
   company?: string;
   position?: string;
   tags?: string[];
+  groupId?: string;
   status: 'active' | 'unsubscribed' | 'bounced';
   lastContacted?: string;
   history: EmailHistory[];
   createdAt: string;
   updatedAt?: string;
   userId?: string;
+}
+
+export interface ContactGroup {
+  id: string;
+  name: string;
+  description?: string;
+  contactCount: number;
+  createdAt: string;
+  updatedAt?: string;
+  userId: string;
 }
 
 export interface EmailHistory {

@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { saveCampaign, getUserTemplates, getTemplateById, getUserContactLists, getContactListById, getCampaign } from "@/lib/firebaseService";
 import { createCampaign } from "@/lib/campaignService";
+import { sendCampaignEmails } from "@/lib/emailService";
 import { useLoading } from "@/hooks/use-loading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PulseSpinner } from "@/components/ui/spinner";
@@ -316,10 +317,19 @@ const CampaignNew = () => {
   }, [campaignId, startLoading, stopLoading, toast]);
 
   const handleSaveCampaign = async (status: 'draft' | 'scheduled' | 'sending') => {
-    if (!name.trim()) {
+    if (!name) {
       toast({
-        title: "Campaign name required",
-        description: "Please enter a name for your campaign.",
+        title: "Missing Campaign Name",
+        description: "Please enter a name for your campaign",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!subject) {
+      toast({
+        title: "Missing Subject Line",
+        description: "Please enter a subject line for your email",
         variant: "destructive"
       });
       return;
@@ -327,8 +337,8 @@ const CampaignNew = () => {
     
     if (!templateId) {
       toast({
-        title: "Template required",
-        description: "Please select an email template.",
+        title: "No Template Selected",
+        description: "Please select an email template for your campaign",
         variant: "destructive"
       });
       return;
@@ -336,59 +346,67 @@ const CampaignNew = () => {
     
     if (!contactListId) {
       toast({
-        title: "Contact list required",
-        description: "Please select a contact list for your campaign.",
+        title: "No Contact List Selected",
+        description: "Please select a contact list for your campaign",
         variant: "destructive"
       });
       return;
     }
     
+    setIsSending(true);
+    startLoading({
+      message: status === 'sending' ? "Sending campaign..." : "Saving campaign...",
+      spinnerType: "pulse"
+    });
+    
     try {
-      startLoading({
-        message: status === 'sending' ? "Sending campaign..." : "Saving campaign...",
-        spinnerType: "pulse"
-      });
-      
-      setIsSending(true);
-      
-      // Get the number of recipients from the selected contact list
-      const selectedList = contactLists.find(list => list.id === contactListId);
-      const recipientCount = selectedList?.count || 0;
+      // Generate the HTML content
+      const html = generateHtml();
       
       // Create campaign object
-      const campaign: Campaign = {
-        id: campaignId || "",
+      const campaignData: Campaign = {
+        id: campaignId || uuidv4(),
         name,
+        subject,
         templateId,
         contactListId,
+        html,
         status,
-        recipients: recipientCount,
+        scheduledDate: scheduledDate ? scheduledDate.toISOString() : null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        sentAt: null,
+        recipients: 0,
         opened: 0,
         clicked: 0,
         replied: 0,
-        createdAt: new Date().toISOString(),
-        subject: subject
       };
       
-      // Add scheduled date if set
-      if (scheduledDate && status === 'scheduled') {
-        campaign.scheduled = scheduledDate.toISOString();
-      }
+      // Save campaign to database
+      const savedCampaignId = await saveCampaign(campaignData);
       
-      // If sending now, set the sentAt date
+      // If status is 'sending', send the campaign emails
       if (status === 'sending') {
-        campaign.sentAt = new Date().toISOString();
+        const result = await sendCampaignEmails(savedCampaignId);
+        
+        if (result.success) {
+          toast({
+            title: "Campaign Sent Successfully",
+            description: `Sent to ${result.successfulSends} contacts. ${result.failedSends ? `Failed: ${result.failedSends}` : ''}`,
+          });
+        } else {
+          toast({
+            title: "Error Sending Campaign",
+            description: "There was an error sending your campaign. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Campaign Saved",
+          description: status === 'scheduled' ? "Your campaign has been scheduled" : "Your campaign has been saved as a draft",
+        });
       }
-      
-      // Save the campaign
-      const savedCampaignId = await createCampaign(campaign);
-      
-      toast({
-        title: status === 'sending' ? "Campaign sent" : "Campaign saved",
-        description: status === 'sending' 
-          ? `Your campaign "${name}" has been sent to ${recipientCount} recipients.`
-          : `Your campaign "${name}" has been saved as ${status}.`,
-      });
       
       // Navigate back to campaigns list
       navigate("/campaigns");
@@ -396,7 +414,7 @@ const CampaignNew = () => {
       console.error("Error saving campaign:", error);
       toast({
         title: "Error",
-        description: `Failed to ${status === 'sending' ? 'send' : 'save'} campaign.`,
+        description: "There was an error saving your campaign. Please try again.",
         variant: "destructive"
       });
     } finally {

@@ -16,6 +16,7 @@ import ContactForm from "@/components/contacts/ContactForm";
 import ImportContactsDialog from "@/components/contacts/ImportContactsDialog";
 import ContactsExport from "@/components/contacts/ContactsExport";
 import CreateContactList from "@/components/contacts/AddToNewCampaign";
+import ContactGroupsManager from "@/components/contacts/ContactGroupsManager";
 
 const Contacts = () => {
   const { toast } = useToast();
@@ -227,347 +228,378 @@ const Contacts = () => {
         <p className="text-muted-foreground">View and manage your contact lists.</p>
       </div>
       
-      {/* Contact Analytics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="contact-card animate-instruction" style={{"--delay": "0"} as React.CSSProperties}>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="h-5 w-5 text-brand-purple" />
-              Total Contacts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{contacts.length}</div>
-          </CardContent>
-        </Card>
+      {/* Main Tabs */}
+      <Tabs defaultValue="contacts" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="contacts" className="flex items-center">
+            <Users className="mr-2 h-4 w-4" />
+            Contacts
+          </TabsTrigger>
+          <TabsTrigger value="groups" className="flex items-center">
+            <Users className="mr-2 h-4 w-4" />
+            Groups
+          </TabsTrigger>
+        </TabsList>
         
-        <Card className="contact-card animate-instruction" style={{"--delay": "1"} as React.CSSProperties}>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <UserRound className="h-5 w-5 text-brand-blue" />
-              Active Contacts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {contacts.filter(contact => contact.status === "active").length}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="contact-card animate-instruction" style={{"--delay": "2"} as React.CSSProperties}>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Tag className="h-5 w-5 text-brand-teal" />
-              Unique Companies
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {new Set(contacts.map(contact => contact.company).filter(Boolean)).size}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* Filters and actions */}
-      <div className="flex flex-col sm:flex-row justify-between gap-4">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search contacts..."
-              className="pl-9"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
-              <SelectItem value="bounced">Bounced</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="flex gap-2">
-          <div className="flex">
-            <Button variant="outline" className="rounded-r-none border-r-0" onClick={() => setImportDialogOpen(true)}>
-              <Upload className="mr-2 h-4 w-4" />
-              Import
-            </Button>
-            <ContactsExport contacts={filteredContacts} />
+        <TabsContent value="contacts" className="space-y-4">
+          {/* Contact Analytics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card className="contact-card animate-instruction" style={{"--delay": "0"} as React.CSSProperties}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Users className="h-5 w-5 text-brand-purple" />
+                  Total Contacts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{contacts.length}</div>
+              </CardContent>
+            </Card>
+            
+            <Card className="contact-card animate-instruction" style={{"--delay": "1"} as React.CSSProperties}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <UserRound className="h-5 w-5 text-brand-blue" />
+                  Active Contacts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {contacts.filter(contact => contact.status === "active").length}
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="contact-card animate-instruction" style={{"--delay": "2"} as React.CSSProperties}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Tag className="h-5 w-5 text-brand-teal" />
+                  Unique Companies
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {new Set(contacts.map(contact => contact.company).filter(Boolean)).size}
+                </div>
+              </CardContent>
+            </Card>
           </div>
           
-          <Button onClick={handleAddContact} className="bg-brand-purple hover:bg-brand-purple/90">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Contact
-          </Button>
-        </div>
-      </div>
-      
-      {/* Bulk Actions */}
-      {selectedContactIds.length > 0 && (
-        <div className="bg-muted p-2 rounded-md flex items-center justify-between">
-          <span className="text-sm font-medium ml-2">
-            {selectedContactIds.length} contact{selectedContactIds.length !== 1 ? 's' : ''} selected
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCampaignDialogOpen(true)}
-            >
-              Create Contact List
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleBulkDelete}
-            >
-              <Trash2 className="mr-1 h-4 w-4" /> Delete
-            </Button>
-          </div>
-        </div>
-      )}
-      
-      {/* Contact List and Details */}
-      <div className="border rounded-lg">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40px]">
-                  <Checkbox
-                    checked={filteredContacts.length > 0 && selectedContactIds.length === filteredContacts.length}
-                    onCheckedChange={toggleSelectAll}
-                  />
-                </TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Contacted</TableHead>
-                <TableHead className="w-[40px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loadingContacts ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-purple mb-2"></div>
-                      <p className="text-muted-foreground">Loading contacts...</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : filteredContacts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <Users className="h-8 w-8 text-muted-foreground mb-2" />
-                      <p className="text-muted-foreground mb-2">No contacts found</p>
-                      <Button variant="outline" size="sm" onClick={handleAddContact}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Contact
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredContacts.map((contact) => (
-                  <TableRow 
-                    key={contact.id}
-                    className={`hover:bg-muted/50 ${selectedContact?.id === contact.id ? 'bg-muted/50' : ''}`}
-                  >
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedContactIds.includes(contact.id)}
-                        onCheckedChange={() => toggleContactSelection(contact.id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </TableCell>
-                    <TableCell
-                      className="cursor-pointer"
-                      onClick={() => setSelectedContact(selectedContact?.id === contact.id ? null : contact)}
-                    >
-                      <div className="font-medium">
-                        {contact.firstName} {contact.lastName}
-                      </div>
-                      {contact.position && (
-                        <div className="text-sm text-muted-foreground">
-                          {contact.position}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => setSelectedContact(selectedContact?.id === contact.id ? null : contact)}>
-                      {contact.email}
-                    </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => setSelectedContact(selectedContact?.id === contact.id ? null : contact)}>
-                      {contact.company || "—"}
-                    </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => setSelectedContact(selectedContact?.id === contact.id ? null : contact)}>
-                      {renderStatusBadge(contact.status)}
-                    </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => setSelectedContact(selectedContact?.id === contact.id ? null : contact)}>
-                      {contact.lastContacted ? formatDate(contact.lastContacted) : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0"
-                          onClick={() => setSelectedContact(selectedContact?.id === contact.id ? null : contact)}
-                        >
-                          <ChevronDown className={`h-4 w-4 transition-transform ${selectedContact?.id === contact.id ? "transform rotate-180" : ""}`} />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        
-        {selectedContact && (
-          <div className="border-t p-4 animate-fade-in">
-            <div className="flex justify-between items-center mb-4">
-              <Tabs defaultValue="history">
-                <TabsList>
-                  <TabsTrigger value="history" className="flex items-center">
-                    <Clock className="mr-2 h-4 w-4" />
-                    Email History
-                  </TabsTrigger>
-                  <TabsTrigger value="details" className="flex items-center">
-                    <UserRound className="mr-2 h-4 w-4" />
-                    Contact Details
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-              
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleEditContact(selectedContact)}
-                >
-                  Edit
+          {/* Filters and actions */}
+          <div className="flex flex-col sm:flex-row justify-between gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search contacts..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
+                  <SelectItem value="bounced">Bounced</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex gap-2">
+              <div className="flex">
+                <Button variant="outline" className="rounded-r-none border-r-0" onClick={() => setImportDialogOpen(true)}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import
                 </Button>
-                <Button 
-                  variant="outline" 
+                <ContactsExport contacts={filteredContacts} />
+              </div>
+              
+              <Button onClick={handleAddContact} className="bg-brand-purple hover:bg-brand-purple/90">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Contact
+              </Button>
+            </div>
+          </div>
+          
+          {/* Bulk Actions */}
+          {selectedContactIds.length > 0 && (
+            <div className="bg-muted p-2 rounded-md flex items-center justify-between">
+              <span className="text-sm font-medium ml-2">
+                {selectedContactIds.length} contact{selectedContactIds.length !== 1 ? 's' : ''} selected
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
                   size="sm"
-                  className="text-red-500 hover:text-red-600"
-                  onClick={() => handleDeleteContact(selectedContact.id)}
+                  onClick={() => setCampaignDialogOpen(true)}
                 >
-                  Delete
+                  Create Contact List
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                >
+                  <Trash2 className="mr-1 h-4 w-4" /> Delete
                 </Button>
               </div>
             </div>
-            
-            <TabsContent value="history">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Email History for {selectedContact.firstName} {selectedContact.lastName}</h3>
-                
-                {!selectedContact.history || selectedContact.history.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Mail className="h-8 w-8 mx-auto mb-2" />
-                    <p>No email history found.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {selectedContact.history.map((entry: EmailHistory) => (
-                      <Card key={entry.id} className="overflow-hidden">
-                        <div className="h-1 bg-gradient-to-r from-brand-purple to-brand-blue" />
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <h4 className="font-medium">{entry.subject}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                Campaign: {entry.campaignName}
-                              </p>
-                            </div>
-                            {renderEmailStatus(entry.status)}
+          )}
+          
+          {/* Contact List and Details */}
+          <div className="border rounded-lg">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[40px]">
+                      <Checkbox
+                        checked={filteredContacts.length > 0 && selectedContactIds.length === filteredContacts.length}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Last Contacted</TableHead>
+                    <TableHead className="w-[40px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loadingContacts ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-32 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-purple mb-2"></div>
+                          <p className="text-muted-foreground">Loading contacts...</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredContacts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-32 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <Users className="h-8 w-8 text-muted-foreground mb-2" />
+                          <p className="text-muted-foreground mb-2">No contacts found</p>
+                          <Button variant="outline" size="sm" onClick={handleAddContact}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Contact
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredContacts.map((contact) => (
+                      <TableRow 
+                        key={contact.id}
+                        className={`hover:bg-muted/50 ${selectedContact?.id === contact.id ? 'bg-muted/50' : ''}`}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedContactIds.includes(contact.id)}
+                            onCheckedChange={() => toggleContactSelection(contact.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </TableCell>
+                        <TableCell
+                          className="cursor-pointer"
+                          onClick={() => setSelectedContact(selectedContact?.id === contact.id ? null : contact)}
+                        >
+                          <div className="font-medium">
+                            {contact.firstName} {contact.lastName}
                           </div>
-                          
-                          <div className="text-sm text-muted-foreground mb-2">
-                            {formatDate(entry.date)}
-                          </div>
-                          
-                          {entry.reply && (
-                            <div className="mt-2 p-3 bg-muted rounded-md text-sm">
-                              <p className="font-medium mb-1">Reply:</p>
-                              <p>{entry.reply}</p>
+                          {contact.position && (
+                            <div className="text-sm text-muted-foreground">
+                              {contact.position}
                             </div>
                           )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
+                        </TableCell>
+                        <TableCell className="cursor-pointer" onClick={() => setSelectedContact(selectedContact?.id === contact.id ? null : contact)}>
+                          {contact.email}
+                        </TableCell>
+                        <TableCell className="cursor-pointer" onClick={() => setSelectedContact(selectedContact?.id === contact.id ? null : contact)}>
+                          {contact.company || "—"}
+                        </TableCell>
+                        <TableCell className="cursor-pointer" onClick={() => setSelectedContact(selectedContact?.id === contact.id ? null : contact)}>
+                          {renderStatusBadge(contact.status)}
+                        </TableCell>
+                        <TableCell className="cursor-pointer" onClick={() => setSelectedContact(selectedContact?.id === contact.id ? null : contact)}>
+                          {contact.lastContacted ? formatDate(contact.lastContacted) : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8 w-8 p-0"
+                              onClick={() => setSelectedContact(selectedContact?.id === contact.id ? null : contact)}
+                            >
+                              <ChevronDown className={`h-4 w-4 transition-transform ${selectedContact?.id === contact.id ? "transform rotate-180" : ""}`} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
             
-            <TabsContent value="details">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Contact Details</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">First Name</p>
-                    <p className="font-medium">{selectedContact.firstName || "—"}</p>
-                  </div>
+            {selectedContact && (
+              <div className="border-t p-4 animate-fade-in">
+                <div className="flex justify-between items-center mb-4">
+                  <Tabs defaultValue="history">
+                    <TabsList>
+                      <TabsTrigger value="history" className="flex items-center">
+                        <Clock className="mr-2 h-4 w-4" />
+                        Email History
+                      </TabsTrigger>
+                      <TabsTrigger value="details" className="flex items-center">
+                        <UserRound className="mr-2 h-4 w-4" />
+                        Contact Details
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="history">
+                      <div className="space-y-4 mt-4">
+                        <h3 className="text-lg font-medium">Email History for {selectedContact.firstName} {selectedContact.lastName}</h3>
+                        
+                        {!selectedContact.history || selectedContact.history.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Mail className="h-8 w-8 mx-auto mb-2" />
+                            <p>No email history found.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {selectedContact.history.map((entry: EmailHistory) => (
+                              <Card key={entry.id} className="overflow-hidden">
+                                <div className="h-1 bg-gradient-to-r from-brand-purple to-brand-blue" />
+                                <CardContent className="p-4">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                      <h4 className="font-medium">{entry.subject}</h4>
+                                      <p className="text-sm text-muted-foreground">
+                                        Campaign: {entry.campaignName}
+                                      </p>
+                                    </div>
+                                    {renderEmailStatus(entry.status)}
+                                  </div>
+                                  
+                                  <div className="text-sm text-muted-foreground mb-2">
+                                    {formatDate(entry.date)}
+                                  </div>
+                                  
+                                  {entry.reply && (
+                                    <div className="mt-2 p-3 bg-muted rounded-md text-sm">
+                                      <p className="font-medium mb-1">Reply:</p>
+                                      <p>{entry.reply}</p>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="details">
+                      <div className="space-y-4 mt-4">
+                        <h3 className="text-lg font-medium">Contact Details</h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">First Name</p>
+                            <p className="font-medium">{selectedContact.firstName || "—"}</p>
+                          </div>
+                          
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">Last Name</p>
+                            <p className="font-medium">{selectedContact.lastName || "—"}</p>
+                          </div>
+                          
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">Email</p>
+                            <p className="font-medium">{selectedContact.email}</p>
+                          </div>
+                          
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">Status</p>
+                            <div>{renderStatusBadge(selectedContact.status)}</div>
+                          </div>
+                          
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">Company</p>
+                            <p className="font-medium">{selectedContact.company || "—"}</p>
+                          </div>
+                          
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">Position</p>
+                            <p className="font-medium">{selectedContact.position || "—"}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-4">
+                          <p className="text-sm text-muted-foreground mb-1">Tags</p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedContact.tags && selectedContact.tags.length > 0 ? (
+                              selectedContact.tags.map(tag => (
+                                <Badge key={tag} variant="secondary">{tag}</Badge>
+                              ))
+                            ) : (
+                              <span className="text-muted-foreground">No tags</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                   
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Last Name</p>
-                    <p className="font-medium">{selectedContact.lastName || "—"}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Email</p>
-                    <p className="font-medium">{selectedContact.email}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Status</p>
-                    <div>{renderStatusBadge(selectedContact.status)}</div>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Company</p>
-                    <p className="font-medium">{selectedContact.company || "—"}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Position</p>
-                    <p className="font-medium">{selectedContact.position || "—"}</p>
-                  </div>
-                </div>
-                
-                <div className="mt-4">
-                  <p className="text-sm text-muted-foreground mb-1">Tags</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedContact.tags && selectedContact.tags.length > 0 ? (
-                      selectedContact.tags.map(tag => (
-                        <Badge key={tag} variant="secondary">{tag}</Badge>
-                      ))
-                    ) : (
-                      <span className="text-muted-foreground">No tags</span>
-                    )}
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEditContact(selectedContact)}
+                    >
+                      Edit
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="text-red-500 hover:text-red-600"
+                      onClick={() => handleDeleteContact(selectedContact.id)}
+                    >
+                      Delete
+                    </Button>
                   </div>
                 </div>
               </div>
-            </TabsContent>
+            )}
           </div>
-        )}
-      </div>
+        </TabsContent>
+        
+        <TabsContent value="groups" className="space-y-4">
+          {/* Contact Groups Management */}
+          <ContactGroupsManager 
+            onGroupSelect={(groupId) => {
+              // Filter contacts by the selected group
+              const groupContacts = contacts.filter(contact => contact.groupId === groupId);
+              setFilteredContacts(groupContacts);
+              toast({
+                title: "Group Selected",
+                description: `Showing ${groupContacts.length} contacts in this group.`
+              });
+            }} 
+          />
+        </TabsContent>
+      </Tabs>
       
       {/* Add/Edit Contact Dialog */}
       <Dialog open={contactFormOpen} onOpenChange={setContactFormOpen}>

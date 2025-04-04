@@ -10,7 +10,8 @@ import { Mail, MessageSquare, CreditCard, FileCheck, Github, Slack, Calendar, Ar
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { saveSmtpConfig, getSmtpConfig, testSmtpConnection } from "@/lib/firebaseService";
+import { saveSmtpConfig, getSmtpConfig } from "@/lib/firebaseService";
+import { testSmtpConnection as testSmtpConnectionService, sendTestEmail } from "@/lib/emailService";
 import { useLoading } from "@/hooks/use-loading";
 
 const Integrations = () => {
@@ -274,10 +275,10 @@ const Integrations = () => {
     setSmtpTestStatus("testing");
     
     try {
-      // Test the SMTP connection
-      const success = await testSmtpConnection(smtpConfig);
+      // Test the SMTP connection using the new service
+      const result = await testSmtpConnectionService(smtpConfig);
       
-      if (success) {
+      if (result.success) {
         setSmtpTestStatus("success");
         toast({
           title: "SMTP Connection Successful",
@@ -287,7 +288,7 @@ const Integrations = () => {
         setSmtpTestStatus("error");
         toast({
           title: "SMTP Connection Failed",
-          description: "Could not connect to the SMTP server. Please check your settings.",
+          description: result.message || "Could not connect to the SMTP server. Please check your settings.",
           variant: "destructive"
         });
       }
