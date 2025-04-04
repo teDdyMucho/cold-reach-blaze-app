@@ -9,19 +9,13 @@ import { ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmailComponent } from "@/types";
 import { ColorPicker } from "@/components/ui/color-picker";
-
-interface ComponentSettingsProps {
-  collapsed: boolean;
-  onToggle: () => void;
-  selectedComponent: EmailComponent | null;
-  onUpdate: (component: EmailComponent) => void;
-}
+import { ComponentSettingsProps } from "@/types/email";
 
 const ComponentSettings: React.FC<ComponentSettingsProps> = ({
   collapsed,
   onToggle,
   selectedComponent,
-  onUpdate,
+  onComponentUpdate
 }) => {
   if (!selectedComponent) {
     return (
@@ -42,7 +36,7 @@ const ComponentSettings: React.FC<ComponentSettingsProps> = ({
       },
     };
 
-    onUpdate(updatedComponent);
+    onComponentUpdate(updatedComponent);
   };
 
   const handleContentChange = (content: string) => {
@@ -53,7 +47,7 @@ const ComponentSettings: React.FC<ComponentSettingsProps> = ({
       content,
     };
 
-    onUpdate(updatedComponent);
+    onComponentUpdate(updatedComponent);
   };
 
   const handleUrlChange = (url: string) => {
@@ -64,7 +58,7 @@ const ComponentSettings: React.FC<ComponentSettingsProps> = ({
       url,
     };
 
-    onUpdate(updatedComponent);
+    onComponentUpdate(updatedComponent);
   };
 
   const handleSrcChange = (src: string) => {
@@ -75,7 +69,7 @@ const ComponentSettings: React.FC<ComponentSettingsProps> = ({
       src,
     };
 
-    onUpdate(updatedComponent);
+    onComponentUpdate(updatedComponent);
   };
 
   const handleAltChange = (alt: string) => {
@@ -86,7 +80,7 @@ const ComponentSettings: React.FC<ComponentSettingsProps> = ({
       alt,
     };
 
-    onUpdate(updatedComponent);
+    onComponentUpdate(updatedComponent);
   };
 
   return (

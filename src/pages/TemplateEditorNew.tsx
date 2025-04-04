@@ -12,7 +12,7 @@ import EmailCanvas from "@/components/templateEditor/EmailCanvas";
 import ComponentSettings from "@/components/templateEditor/ComponentSettings";
 import CodeView from "@/components/templateEditor/CodeView";
 import { useToast } from "@/components/ui/use-toast";
-import { saveTemplate, getTemplate } from "@/lib/firebaseService";
+import { saveTemplate, getTemplateById } from "@/lib/firebaseService";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface EmailStyles {
@@ -88,7 +88,7 @@ const TemplateEditorNew = () => {
       if (id) {
         try {
           setIsLoading(true);
-          const loadedTemplate = await getTemplate(id);
+          const loadedTemplate = await getTemplateById(id);
           if (loadedTemplate) {
             setTemplate(loadedTemplate);
             setEmailComponents(loadedTemplate.components || []);
@@ -140,7 +140,7 @@ const TemplateEditorNew = () => {
       
       // Update template ID if it's a new template
       if (!template.id) {
-        setTemplate(prev => ({ ...prev, id: savedId }));
+        setTemplate({ ...template, id: savedId });
       }
       
       toast({
