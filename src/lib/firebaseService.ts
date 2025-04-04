@@ -23,7 +23,7 @@ import {
 } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from './firebase';
-import { Template, EmailComponent, UserSettings, Contact } from '@/types';
+import { Template, EmailComponent, UserSettings, Contact, Campaign } from '@/types';
 
 // Authentication services
 export const registerUser = async (email: string, password: string, displayName: string) => {
@@ -179,11 +179,12 @@ export const saveContact = async (contact: Contact): Promise<string> => {
       ? doc(db, 'users', userId, 'contacts', contact.id)
       : doc(collection(db, 'users', userId, 'contacts'));
     
-    const contactData = {
+    // Create a new object to avoid TypeScript errors
+    const contactData: any = {
       ...contact,
       id: contactRef.id,
       updatedAt: serverTimestamp(),
-      createdAt: contact.createdAt || serverTimestamp()
+      createdAt: serverTimestamp()
     };
     
     await setDoc(contactRef, contactData);
@@ -302,6 +303,127 @@ export const uploadImage = async (file: File) => {
     return downloadURL;
   } catch (error) {
     console.error('Error uploading image:', error);
+    throw error;
+  }
+};
+
+// Campaign services
+export const saveCampaign = async (campaign: Campaign): Promise<string> => {
+  try {
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error('User not authenticated');
+    
+    const campaignRef = campaign.id 
+      ? doc(db, 'users', userId, 'campaigns', campaign.id)
+      : doc(collection(db, 'users', userId, 'campaigns'));
+    
+    // Create a new object without type checking to allow for Firestore timestamps
+    const campaignData: any = {
+      ...campaign,
+      id: campaignRef.id,
+      updatedAt: serverTimestamp(),
+      createdAt: campaign.createdAt ? Timestamp.fromDate(new Date(campaign.createdAt)) : serverTimestamp()
+    };
+    
+    // Convert date strings to Firestore timestamps
+    if (campaign.scheduled) {
+      campaignData.scheduled = Timestamp.fromDate(new Date(campaign.scheduled));
+    }
+    
+    if (campaign.sentAt) {
+      campaignData.sentAt = Timestamp.fromDate(new Date(campaign.sentAt));
+    }
+    
+    await setDoc(campaignRef, campaignData);
+    return campaignRef.id;
+  } catch (error) {
+    console.error('Error saving campaign:', error);
+    throw error;
+  }
+};
+
+export const getCampaign = async (campaignId: string): Promise<Campaign> => {
+  try {
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error('User not authenticated');
+    
+    const campaignRef = doc(db, 'users', userId, 'campaigns', campaignId);
+    const campaignSnap = await getDoc(campaignRef);
+    
+    if (campaignSnap.exists()) {
+      const data = campaignSnap.data();
+      
+      // Convert Firestore timestamps to ISO strings
+      const campaign = { 
+        id: campaignSnap.id, 
+        ...data,
+        createdAt: data.createdAt?.toDate().toISOString() || new Date().toISOString(),
+      } as Campaign;
+      
+      if (data.scheduled) {
+        campaign.scheduled = data.scheduled.toDate().toISOString();
+      }
+      
+      if (data.sentAt) {
+        campaign.sentAt = data.sentAt.toDate().toISOString();
+      }
+      
+      return campaign;
+    } else {
+      throw new Error('Campaign not found');
+    }
+  } catch (error) {
+    console.error('Error getting campaign:', error);
+    throw error;
+  }
+};
+
+export const getUserCampaigns = async (): Promise<Campaign[]> => {
+  try {
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error('User not authenticated');
+    
+    const campaignsRef = collection(db, 'users', userId, 'campaigns');
+    const q = query(campaignsRef, orderBy('createdAt', 'desc'));
+    const campaignsSnap = await getDocs(q);
+    
+    const campaigns: Campaign[] = [];
+    campaignsSnap.forEach((doc) => {
+      const data = doc.data();
+      
+      // Convert Firestore timestamps to ISO strings
+      const campaign = { 
+        id: doc.id, 
+        ...data,
+        createdAt: data.createdAt?.toDate().toISOString() || new Date().toISOString(),
+      } as Campaign;
+      
+      if (data.scheduled) {
+        campaign.scheduled = data.scheduled.toDate().toISOString();
+      }
+      
+      if (data.sentAt) {
+        campaign.sentAt = data.sentAt.toDate().toISOString();
+      }
+      
+      campaigns.push(campaign);
+    });
+    
+    return campaigns;
+  } catch (error) {
+    console.error('Error getting campaigns:', error);
+    throw error;
+  }
+};
+
+export const deleteCampaign = async (campaignId: string): Promise<void> => {
+  try {
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error('User not authenticated');
+    
+    await deleteDoc(doc(db, 'users', userId, 'campaigns', campaignId));
+  } catch (error) {
+    console.error('Error deleting campaign:', error);
     throw error;
   }
 };

@@ -9,17 +9,19 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Template, Campaign } from "@/types";
-import { templates } from "@/data/mockData";
 import { v4 as uuidv4 } from "uuid";
 import { Send, Users, Mail, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { saveCampaign, getUserTemplates } from "@/lib/firebaseService";
+import { useLoading } from "@/hooks/use-loading";
 
 const CampaignNew = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { startLoading, stopLoading } = useLoading();
   const [templateId, setTemplateId] = useState("");
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
@@ -27,6 +29,30 @@ const CampaignNew = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
   const [isSending, setIsSending] = useState(false);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch templates from Firestore
+    const fetchTemplates = async () => {
+      try {
+        setIsLoading(true);
+        const userTemplates = await getUserTemplates();
+        setTemplates(userTemplates);
+      } catch (error) {
+        console.error("Error fetching templates:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load templates. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTemplates();
+  }, [toast]);
 
   useEffect(() => {
     // Set subject from template when template is selected
@@ -39,9 +65,9 @@ const CampaignNew = () => {
     } else {
       setSelectedTemplate(null);
     }
-  }, [templateId]);
+  }, [templateId, templates]);
 
-  const handleCreateCampaign = () => {
+  const handleCreateCampaign = async () => {
     if (!name) {
       toast({
         title: "Campaign name is required",
@@ -70,11 +96,15 @@ const CampaignNew = () => {
     }
 
     setIsSending(true);
+    startLoading({
+      message: "Creating your campaign...",
+      spinnerType: "wave"
+    });
 
     try {
       // Create new campaign object
       const newCampaign: Campaign = {
-        id: uuidv4(),
+        id: "", // Will be set by Firestore
         name,
         templateId,
         status: scheduledDate && scheduledDate > new Date() ? "scheduled" : "sending",
@@ -86,8 +116,8 @@ const CampaignNew = () => {
         scheduled: scheduledDate ? scheduledDate.toISOString() : undefined,
       };
 
-      // In a real app, this would be saved to a database
-      console.log("New campaign created:", newCampaign);
+      // Save to Firestore
+      await saveCampaign(newCampaign);
 
       toast({
         title: "Campaign created",
@@ -107,7 +137,9 @@ const CampaignNew = () => {
         description: "An error occurred while creating the campaign",
         variant: "destructive",
       });
+    } finally {
       setIsSending(false);
+      stopLoading();
     }
   };
 
@@ -141,14 +173,20 @@ const CampaignNew = () => {
                 <Label htmlFor="template">Email Template</Label>
                 <Select value={templateId} onValueChange={setTemplateId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a template" />
+                    <SelectValue placeholder={isLoading ? "Loading templates..." : "Select a template"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {templates.map((template) => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.name}
+                    {templates.length > 0 ? (
+                      templates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-templates" disabled>
+                        {isLoading ? "Loading templates..." : "No templates available"}
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -204,92 +242,48 @@ const CampaignNew = () => {
             </CardContent>
           </Card>
 
-          <div className="flex gap-4 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => navigate("/campaigns")}
-              disabled={isSending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateCampaign}
-              className="bg-brand-purple hover:bg-brand-purple/90"
-              disabled={isSending}
-            >
-              {isSending ? (
-                <>Creating Campaign...</>
-              ) : scheduledDate && scheduledDate > new Date() ? (
-                <>Schedule Campaign</>
-              ) : (
-                <>Create Campaign</>
-              )}
-            </Button>
-          </div>
+          <Button 
+            onClick={handleCreateCampaign} 
+            disabled={isSending}
+            className="w-full"
+          >
+            {isSending ? (
+              <>
+                <span className="mr-2">Creating campaign...</span>
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Create Campaign
+              </>
+            )}
+          </Button>
         </div>
 
         <div className="space-y-6">
-          <Card className="h-fit">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-medium">Template Preview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {selectedTemplate ? (
-                <div className="border rounded-md p-4 bg-muted/20 min-h-[200px] flex items-center justify-center">
-                  <div className="text-center space-y-2">
-                    <div className="font-medium">
-                      {selectedTemplate.name}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Subject: {subject || selectedTemplate.subject || "No subject"}
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/template-editor/${selectedTemplate.id}`)}
-                      className="mt-4"
-                    >
-                      Preview full template
-                    </Button>
-                  </div>
+          {selectedTemplate ? (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-medium">Template Preview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="border rounded-md p-4 space-y-4">
+                  <div className="font-medium">Subject: {subject}</div>
+                  <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: selectedTemplate.html }} />
                 </div>
-              ) : (
-                <div className="border rounded-md p-4 bg-muted/20 min-h-[200px] flex items-center justify-center">
-                  <div className="text-center text-muted-foreground">
-                    <Mail className="mx-auto h-12 w-12 mb-2 opacity-50" />
-                    <p>Select a template to preview</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="h-fit">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-medium">Campaign Analytics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div className="border rounded-md p-3">
-                    <div className="text-2xl font-bold text-brand-blue">0%</div>
-                    <div className="text-xs text-muted-foreground mt-1">Open Rate</div>
-                  </div>
-                  <div className="border rounded-md p-3">
-                    <div className="text-2xl font-bold text-brand-purple">0%</div>
-                    <div className="text-xs text-muted-foreground mt-1">Click Rate</div>
-                  </div>
-                  <div className="border rounded-md p-3">
-                    <div className="text-2xl font-bold text-brand-teal">0%</div>
-                    <div className="text-xs text-muted-foreground mt-1">Reply Rate</div>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground text-center">
-                  Analytics will be available after your campaign is sent
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-medium">Template Preview</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center justify-center h-80 text-muted-foreground">
+                <Mail className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                <p>Select a template to preview</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

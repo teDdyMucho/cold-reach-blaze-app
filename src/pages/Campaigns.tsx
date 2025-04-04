@@ -6,18 +6,58 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { campaigns, templates } from "@/data/mockData";
-import { Campaign } from "@/types";
-import { Plus, Search, MailCheck, Send, Clock, Calendar, LineChart } from "lucide-react";
+import { Campaign, Template } from "@/types";
+import { Plus, Search, MailCheck, Send, Clock, Calendar, LineChart, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { getUserCampaigns, getUserTemplates, deleteCampaign } from "@/lib/firebaseService";
+import { useLoading } from "@/hooks/use-loading";
 
 const Campaigns = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { startLoading, stopLoading } = useLoading();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [filteredCampaigns, setFilteredCampaigns] = useState<Campaign[]>(campaigns);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [filteredCampaigns, setFilteredCampaigns] = useState<Campaign[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
+  // Fetch campaigns and templates from Firestore
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        startLoading({
+          message: "Loading campaigns...",
+          spinnerType: "pulse"
+        });
+        
+        // Fetch both campaigns and templates in parallel
+        const [userCampaigns, userTemplates] = await Promise.all([
+          getUserCampaigns(),
+          getUserTemplates()
+        ]);
+        
+        setCampaigns(userCampaigns);
+        setTemplates(userTemplates);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load campaigns. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+        stopLoading();
+      }
+    };
+    
+    fetchData();
+  }, [toast, startLoading, stopLoading]);
+  
+  // Filter campaigns based on search term and status filter
   useEffect(() => {
     let result = [...campaigns];
     
@@ -40,7 +80,7 @@ const Campaigns = () => {
     cards.forEach((card, index) => {
       (card as HTMLElement).style.setProperty('--delay', index.toString());
     });
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, campaigns]);
   
   // Helper function to get template name
   const getTemplateName = (templateId: string) => {
@@ -70,6 +110,52 @@ const Campaigns = () => {
   const handleCreateCampaign = () => {
     navigate("/campaign-new");
   };
+
+  // Function to delete a campaign
+  const handleDeleteCampaign = async (campaignId: string) => {
+    try {
+      startLoading({
+        message: "Deleting campaign...",
+        spinnerType: "pulse"
+      });
+      
+      await deleteCampaign(campaignId);
+      
+      // Update the local state
+      setCampaigns(prevCampaigns => prevCampaigns.filter(campaign => campaign.id !== campaignId));
+      
+      toast({
+        title: "Campaign deleted",
+        description: "The campaign has been successfully deleted."
+      });
+    } catch (error) {
+      console.error("Error deleting campaign:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the campaign. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      stopLoading();
+    }
+  };
+  
+  // Calculate campaign metrics
+  const calculateMetrics = () => {
+    const totalCampaigns = campaigns.length;
+    const totalRecipients = campaigns.reduce((sum, campaign) => sum + campaign.recipients, 0);
+    
+    // Calculate average open rate (avoid division by zero)
+    let averageOpenRate = 0;
+    if (totalRecipients > 0) {
+      const totalOpened = campaigns.reduce((sum, campaign) => sum + campaign.opened, 0);
+      averageOpenRate = Math.round((totalOpened / totalRecipients) * 100);
+    }
+    
+    return { totalCampaigns, totalRecipients, averageOpenRate };
+  };
+  
+  const { totalCampaigns, totalRecipients, averageOpenRate } = calculateMetrics();
   
   return (
     <div className="space-y-6">
@@ -88,7 +174,7 @@ const Campaigns = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold mb-1">{campaigns.length}</div>
+            <div className="text-2xl font-bold mb-1">{totalCampaigns}</div>
             <p className="text-sm text-muted-foreground">Total Campaigns</p>
           </CardContent>
         </Card>
@@ -101,9 +187,7 @@ const Campaigns = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold mb-1">
-              {campaigns.reduce((sum, campaign) => sum + campaign.recipients, 0)}
-            </div>
+            <div className="text-2xl font-bold mb-1">{totalRecipients}</div>
             <p className="text-sm text-muted-foreground">Total Recipients</p>
           </CardContent>
         </Card>
@@ -116,10 +200,7 @@ const Campaigns = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold mb-1">
-              {Math.round((campaigns.reduce((sum, campaign) => sum + campaign.opened, 0) / 
-                campaigns.reduce((sum, campaign) => sum + campaign.recipients, 0)) * 100)}%
-            </div>
+            <div className="text-2xl font-bold mb-1">{averageOpenRate}%</div>
             <p className="text-sm text-muted-foreground">Industry avg: 21.5%</p>
           </CardContent>
         </Card>
@@ -160,121 +241,114 @@ const Campaigns = () => {
       </div>
       
       {/* Campaign List */}
-      <div className="space-y-4">
-        {filteredCampaigns.map((campaign, index) => (
-          <Card key={campaign.id} className="campaign-card hover:shadow-md transition-shadow animate-instruction" style={{"--delay": (index + 3).toString()} as React.CSSProperties}>
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row justify-between">
-                <div className="space-y-2 mb-4 md:mb-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-medium">{campaign.name}</h3>
-                    {renderStatus(campaign.status)}
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">Template:</span> {getTemplateName(campaign.templateId)}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">Loading campaigns...</p>
+        </div>
+      ) : filteredCampaigns.length > 0 ? (
+        <div className="space-y-4">
+          {filteredCampaigns.map((campaign, index) => (
+            <Card key={campaign.id} className="campaign-card hover:shadow-md transition-shadow animate-instruction" style={{"--delay": (index + 3).toString()} as React.CSSProperties}>
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row justify-between">
+                  <div className="space-y-2 mb-4 md:mb-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-medium">{campaign.name}</h3>
+                      {renderStatus(campaign.status)}
                     </div>
                     
-                    {campaign.scheduled && (
+                    <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>Scheduled: {new Date(campaign.scheduled).toLocaleDateString()}</span>
+                        <span className="font-medium">Template:</span> {getTemplateName(campaign.templateId)}
                       </div>
-                    )}
-                    
-                    {campaign.sentAt && (
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span>Sent: {new Date(campaign.sentAt).toLocaleDateString()}</span>
-                      </div>
-                    )}
+                      
+                      {campaign.scheduled && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>Scheduled: {new Date(campaign.scheduled).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                      
+                      {campaign.sentAt && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          <span>Sent: {new Date(campaign.sentAt).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button variant="outline" size="sm" onClick={() => {
-                    toast({
-                      title: "View Campaign Stats",
-                      description: "This feature will be available soon!"
-                    });
-                  }}>
-                    View Stats
-                  </Button>
                   
-                  <Button size="sm" onClick={() => {
-                    toast({
-                      title: campaign.status === "draft" ? "Edit Campaign" : "Duplicate Campaign",
-                      description: "This feature will be available soon!"
-                    });
-                  }}>
-                    {campaign.status === "draft" ? "Edit" : "Duplicate"}
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Campaign Stats */}
-              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Recipients</div>
-                  <div className="font-medium">{campaign.recipients}</div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button variant="outline" size="sm" onClick={() => {
+                      toast({
+                        title: "View Campaign Stats",
+                        description: "This feature will be available soon!"
+                      });
+                    }}>
+                      View Stats
+                    </Button>
+                    
+                    <Button variant="outline" size="sm" onClick={() => {
+                      toast({
+                        title: "Duplicate Campaign",
+                        description: "This feature will be available soon!"
+                      });
+                    }}>
+                      Duplicate
+                    </Button>
+                    
+                    <Button variant="destructive" size="sm" onClick={() => handleDeleteCampaign(campaign.id)}>
+                      Delete
+                    </Button>
+                  </div>
                 </div>
                 
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Opened</div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{campaign.opened}</span>
-                    <span className="text-xs text-muted-foreground">
-                      ({campaign.recipients ? Math.round((campaign.opened / campaign.recipients) * 100) : 0}%)
-                    </span>
+                {(campaign.status === "sending" || campaign.status === "sent") && (
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Progress</span>
+                      <span>{campaign.opened} of {campaign.recipients} opened</span>
+                    </div>
+                    <Progress value={(campaign.opened / campaign.recipients) * 100} className="h-2" />
+                    
+                    <div className="grid grid-cols-3 gap-4 mt-4">
+                      <div className="text-center">
+                        <div className="text-sm font-medium">{Math.round((campaign.opened / campaign.recipients) * 100)}%</div>
+                        <div className="text-xs text-muted-foreground">Open Rate</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-medium">{Math.round((campaign.clicked / campaign.recipients) * 100)}%</div>
+                        <div className="text-xs text-muted-foreground">Click Rate</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-medium">{Math.round((campaign.replied / campaign.recipients) * 100)}%</div>
+                        <div className="text-xs text-muted-foreground">Reply Rate</div>
+                      </div>
+                    </div>
                   </div>
-                  <Progress value={campaign.recipients ? (campaign.opened / campaign.recipients) * 100 : 0} className="h-1 mt-1" />
-                </div>
-                
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Clicked</div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{campaign.clicked}</span>
-                    <span className="text-xs text-muted-foreground">
-                      ({campaign.recipients ? Math.round((campaign.clicked / campaign.recipients) * 100) : 0}%)
-                    </span>
-                  </div>
-                  <Progress value={campaign.recipients ? (campaign.clicked / campaign.recipients) * 100 : 0} className="h-1 mt-1" />
-                </div>
-                
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Replied</div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{campaign.replied}</span>
-                    <span className="text-xs text-muted-foreground">
-                      ({campaign.recipients ? Math.round((campaign.replied / campaign.recipients) * 100) : 0}%)
-                    </span>
-                  </div>
-                  <Progress value={campaign.recipients ? (campaign.replied / campaign.recipients) * 100 : 0} className="h-1 mt-1" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        
-        {filteredCampaigns.length === 0 && (
-          <div className="text-center py-12 border rounded-lg bg-muted/20">
-            <div className="bg-muted h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Send className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="text-xl font-medium mb-2">No campaigns found</h3>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="border rounded-md p-8 text-center">
+          <div className="flex flex-col items-center justify-center">
+            <Send className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <h3 className="text-lg font-medium mb-1">No campaigns found</h3>
             <p className="text-muted-foreground mb-4">
-              {searchTerm || statusFilter !== "all" ? 
-                "No campaigns match your search criteria." : 
-                "You haven't created any campaigns yet."}
+              {searchTerm || statusFilter !== "all" 
+                ? "Try adjusting your filters to see more results." 
+                : "Get started by creating your first email campaign."}
             </p>
             <Button onClick={handleCreateCampaign}>
               <Plus className="mr-2 h-4 w-4" />
-              Create Your First Campaign
+              Create Campaign
             </Button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

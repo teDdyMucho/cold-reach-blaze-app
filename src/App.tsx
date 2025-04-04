@@ -12,8 +12,6 @@ import CampaignNew from "@/pages/CampaignNew";
 import Contacts from "@/pages/Contacts";
 import Integrations from "@/pages/Integrations";
 import Landing from "@/pages/Landing";
-import SpinnerDemo from "@/pages/SpinnerDemo";
-import LoadingExample from "@/pages/LoadingExample";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from '@/hooks/use-toast';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -77,8 +75,6 @@ function AppContent() {
           <Route path="/campaign-new" element={<ProtectedRoute><AppLayout><CampaignNew /></AppLayout></ProtectedRoute>} />
           <Route path="/contacts" element={<ProtectedRoute><AppLayout><Contacts /></AppLayout></ProtectedRoute>} />
           <Route path="/integrations" element={<ProtectedRoute><AppLayout><Integrations /></AppLayout></ProtectedRoute>} />
-          <Route path="/spinner-demo" element={<ProtectedRoute><AppLayout><SpinnerDemo /></AppLayout></ProtectedRoute>} />
-          <Route path="/loading-example" element={<ProtectedRoute><AppLayout><LoadingExample /></AppLayout></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <PageTransition />
