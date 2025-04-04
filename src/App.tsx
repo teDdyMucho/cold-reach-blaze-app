@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -13,10 +12,15 @@ import CampaignNew from "@/pages/CampaignNew";
 import Contacts from "@/pages/Contacts";
 import Integrations from "@/pages/Integrations";
 import Landing from "@/pages/Landing";
+import SpinnerDemo from "@/pages/SpinnerDemo";
+import LoadingExample from "@/pages/LoadingExample";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from '@/hooks/use-toast';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { PageTransition, AppLoader } from "@/components/ui/page-transition";
 import NotFound from "@/pages/NotFound";
+import { WaveSpinner } from "@/components/ui/spinner"; // Use named import
+import { LoadingProvider } from "@/hooks/use-loading";
 import "./App.css";
 
 // Create a client
@@ -31,7 +35,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { authState } = useAuth();
   
   if (authState.loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-background/80 backdrop-blur-sm">
+        <WaveSpinner size="lg" variant="primary" />
+        <p className="mt-4 text-primary font-medium">Loading your account...</p>
+      </div>
+    );
   }
   
   if (!authState.user) {
@@ -68,8 +77,11 @@ function AppContent() {
           <Route path="/campaign-new" element={<ProtectedRoute><AppLayout><CampaignNew /></AppLayout></ProtectedRoute>} />
           <Route path="/contacts" element={<ProtectedRoute><AppLayout><Contacts /></AppLayout></ProtectedRoute>} />
           <Route path="/integrations" element={<ProtectedRoute><AppLayout><Integrations /></AppLayout></ProtectedRoute>} />
+          <Route path="/spinner-demo" element={<ProtectedRoute><AppLayout><SpinnerDemo /></AppLayout></ProtectedRoute>} />
+          <Route path="/loading-example" element={<ProtectedRoute><AppLayout><LoadingExample /></AppLayout></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <PageTransition />
         <Toaster />
       </SidebarProvider>
     </QueryClientProvider>
@@ -80,7 +92,10 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <LoadingProvider>
+        <AppContent />
+        <AppLoader />
+      </LoadingProvider>
     </AuthProvider>
   );
 }
